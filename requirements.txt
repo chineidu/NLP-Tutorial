@@ -1,0 +1,10 @@
+dvc==2.43.1
+dvc-gdrive==2.19.1
+feature-engine==1.5.2
+jupyter
+nb-black==1.0.7
+nltk==3.8.1
+pip-chill==1.0.1
+pre-commit==2.21.0
+scikit-learn==1.2.1
+spacy==3.5.0
