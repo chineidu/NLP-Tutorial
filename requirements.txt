@@ -8,3 +8,39 @@ pre-commit==2.21.0
 seaborn==0.12.2
 scikit-learn==1.2.1
 spacy==3.5.0
+
+
+movies = movies_db[["id", "genres", "keywords", "title"]]
+movies = movies.assign(
+    genres=lambda x: x["genres"].apply(extract_values),
+    keywords=lambda x: x["keywords"].apply(extract_values),
+)
+# Concat the columns
+movies["feature"] = movies.apply(
+    lambda x: concat_columns(x["genres"], x["keywords"]), axis="columns"
+)
+
+X = movies["feature"]
+tfidf = TfidfVectorizer(max_features=5_000)
+X_tr = tfidf.fit_transform(X)
+
+# Swap the indices with the titles.
+movie_2_idx = pd.Series(data=movies.index, index=movies["title"])
+movie_2_idx.sample(n=10)
+
+# movie title
+m_title = "X-Men: Apocalypse"
+# Get the index
+idx = movie_2_idx.loc[m_title]
+query = X_tr[idx]
+# Compute Cosine similarity
+sim = cosine_similarity(query, X_tr)
+
+# Flatten to array to a 1-D array
+sim = sim.flatten()
+# Get the indices of the top 5 most similar movies.
+# Slice from 1 to avoid selecting the actual queried movie.
+rec_idx = (-sim).argsort()[1:6]
+
+# Display the recommended movies
+movie_2_idx.iloc[rec_idx]
