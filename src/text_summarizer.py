@@ -13,6 +13,19 @@ warnings.filterwarnings("ignore")
 nlp = spacy.load("en_core_web_sm")
 
 
+class Tokenizer:
+    """This is used to tokenize documents"""
+
+    def __init__(self) -> None:
+        self.nlp = nlp
+
+    def __call__(self, doc: str, *args: Any, **kwargs: Any) -> list[str]:
+        # Tokenize
+        doc = nlp(doc)
+        tokenized_doc = [word.text.lower() for word in doc]
+        return tokenized_doc
+
+
 class Sentencizer:
     """This is used to convert a document into a list of sentences.
     It returns sentences."""
