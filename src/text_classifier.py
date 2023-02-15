@@ -1,4 +1,4 @@
-"""This module is used to build a Classifier using Markov model."""
+"""This module is used to build a Text Classifier using Markov model."""
 
 import numpy as np
 

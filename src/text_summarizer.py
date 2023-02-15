@@ -1,3 +1,5 @@
+"""This module is used to build a Text Summarizer using TFIDF."""
+
 import itertools
 import warnings
 from typing import Any, Optional
