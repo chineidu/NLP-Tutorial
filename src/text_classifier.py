@@ -103,13 +103,13 @@ class MarkovClassifier:
         )
         log_A_1, log_Pi_1 = self._calculate_probabilities(A_1, Pi_1)
         log_p_0, log_p_1 = self._compute_log_priors(y)
+
         self.log_A_s = [log_A_0, log_A_1]
         self.log_Pi_s = [log_Pi_0, log_Pi_1]
         self.log_priors = [log_p_0, log_p_1]
         self.K = len(self.log_priors)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
-        # log_A_s, log_Pi_s, log_priors = self._calculate_log_probs_n_priors(X, y)
         self._calculate_log_probs_n_priors(X, y)
         return self
 
