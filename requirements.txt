@@ -9,3 +9,4 @@ pre-commit==2.21.0
 seaborn==0.12.2
 scikit-learn==1.2.1
 spacy==3.5.0
+wordcloud==1.8.2.2
