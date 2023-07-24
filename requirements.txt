@@ -4,8 +4,10 @@ feature-engine==1.5.2
 jupyter
 lxml==4.9.2
 nb-black==1.0.7
+openai==0.27.8
 pip-chill==1.0.1
 pre-commit==2.21.0
+python-dotenv==1.0.0
 seaborn==0.12.2
 scikit-learn==1.2.1
 spacy==3.5.0
