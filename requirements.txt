@@ -1,9 +1,10 @@
+DateTime==5.2
 docarray==0.36.0
 dvc==2.43.1
 dvc-gdrive==2.19.1
 feature-engine==1.5.2
 jupyter
-langchain==0.0.240
+langchain==0.0.245
 lxml==4.9.2
 nb-black==1.0.7
 openai==0.27.8
@@ -14,4 +15,5 @@ seaborn==0.12.2
 scikit-learn==1.2.1
 spacy==3.5.0
 tiktoken==0.4.0
+wikipedia==1.4.0
 wordcloud==1.8.2.2
