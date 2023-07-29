@@ -10,6 +10,8 @@ nb-black==1.0.7
 openai==0.27.8
 pip-chill==1.0.1
 pre-commit==2.21.0
+pydub==0.25.1
+pypdf==3.13.0
 python-dotenv==1.0.0
 seaborn==0.12.2
 scikit-learn==1.2.1
@@ -17,3 +19,4 @@ spacy==3.5.0
 tiktoken==0.4.0
 wikipedia==1.4.0
 wordcloud==1.8.2.2
+yt_dlp==2023.7.6
