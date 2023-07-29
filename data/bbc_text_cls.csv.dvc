@@ -1,0 +1,4 @@
+outs:
+- md5: 04986321348114c1676a0f2ee6f86f6d
+  size: 5085081
+  path: bbc_text_cls.csv
