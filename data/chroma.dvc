@@ -1,0 +1,5 @@
+outs:
+- md5: 6ce0d02d26c9ca7b9d1ede5b3a1649b0.dir
+  size: 11530980
+  nfiles: 5
+  path: chroma
