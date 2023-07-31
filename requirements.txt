@@ -4,6 +4,7 @@ docarray==0.36.0
 dvc==2.43.1
 dvc-gdrive==2.19.1
 feature-engine==1.5.2
+jq==1.4.1
 jupyter
 langchain==0.0.245
 lark==1.1.7

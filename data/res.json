@@ -1,0 +1,260 @@
+{
+    "status": "success",
+    "data": {
+        "country": "Nigeria",
+        "currency": "NGN",
+        "behaviouralAnalysis": {
+            "accountSweep": "No",
+            "gamblingRate": 0,
+            "inflowOutflowRate": "Negative Cash Flow",
+            "loanAmount": 74975,
+            "loanInflowRate": 0.29,
+            "loanRepaymentInflowRate": 0.22,
+            "loanRepayments": 58073.03,
+            "topIncomingTransferAccount": "08165850038",
+            "topTransferRecipientAccount": "Faith Oluwaseyi"
+        },
+        "cashFlowAnalysis": {
+            "accountActivity": 0.44,
+            "averageBalance": 8954.79,
+            "averageCredits": 10469.456400000001,
+            "averageDebits": 3224.3595121951216,
+            "closingBalance": 404.27,
+            "firstDay": "2022-02-06",
+            "lastDay": "2022-05-06",
+            "monthPeriod": "February - May",
+            "netAverageMonthlyEarnings": -52266.03999999999,
+            "noOfTransactingMonths": 4,
+            "totalCreditTurnover": 261736.41,
+            "totalDebitTurnover": 264397.48,
+            "yearInStatement": "2022",
+            "maxEmiEligibility": 2898,
+            "emiConfidenceScore": 0.12,
+            "totalMonthlyCredit": [
+                {
+                    "month": "2022-02",
+                    "amount": 1.41
+                },
+                {
+                    "month": "2022-03",
+                    "amount": 90550
+                },
+                {
+                    "month": "2022-04",
+                    "amount": 90630
+                },
+                {
+                    "month": "2022-05",
+                    "amount": 80555
+                }
+            ],
+            "totalMonthlyDebit": [
+                {
+                    "month": "2022-04",
+                    "amount": 114106.87
+                },
+                {
+                    "month": "2022-05",
+                    "amount": 86431.17
+                },
+                {
+                    "month": "2022-02",
+                    "amount": 3065.48
+                },
+                {
+                    "month": "2022-03",
+                    "amount": 60793.96
+                }
+            ],
+            "averageMonthlyCredit": [
+                {
+                    "month": "2022-02",
+                    "amount": 0.71
+                },
+                {
+                    "month": "2022-03",
+                    "amount": 10061.11
+                },
+                {
+                    "month": "2022-04",
+                    "amount": 12947.14
+                },
+                {
+                    "month": "2022-05",
+                    "amount": 11507.86
+                }
+            ],
+            "averageMonthlyDebit": [
+                {
+                    "month": "2022-04",
+                    "amount": 5705.34
+                },
+                {
+                    "month": "2022-05",
+                    "amount": 5401.95
+                },
+                {
+                    "month": "2022-02",
+                    "amount": 383.19
+                },
+                {
+                    "month": "2022-03",
+                    "amount": 1599.84
+                }
+            ]
+        },
+        "incomeAnalysis": {
+            "salaryEarner": "Yes",
+            "medianIncome": 14000,
+            "averageOtherIncome": 0,
+            "expectedSalaryDay": 21,
+            "lastSalaryDate": "2022-05-04",
+            "averageSalary": 13833.33,
+            "confidenceIntervalonSalaryDetection": 0.86,
+            "salaryFrequency": "1",
+            "numberSalaryPayments": 3,
+            "numberOtherIncomePayments": 0,
+            "gigWorker": "No"
+        },
+        "spendAnalysis": {
+            "averageRecurringExpense": 30626.92,
+            "hasRecurringExpense": "Yes",
+            "averageMonthlyExpenses": 66099.37,
+            "expenseChannels": [
+                {
+                    "key": "atmSpend",
+                    "value": 1000
+                },
+                {
+                    "key": "webSpend",
+                    "value": 29571.84
+                },
+                {
+                    "key": "posSpend",
+                    "value": 29571.84
+                },
+                {
+                    "key": "ussdTransactions",
+                    "value": 2804.14
+                },
+                {
+                    "key": "mobileSpend",
+                    "value": 0
+                },
+                {
+                    "key": "spendOnTransfers",
+                    "value": 39393.01
+                },
+                {
+                    "key": "internationalTransactionsSpend",
+                    "value": 0
+                }
+            ],
+            "expenseCategories": [
+                {
+                    "key": "bills",
+                    "value": 0
+                },
+                {
+                    "key": "entertainment",
+                    "value": 0
+                },
+                {
+                    "key": "savingsAndInvestments",
+                    "value": 0
+                },
+                {
+                    "key": "gambling",
+                    "value": 0
+                },
+                {
+                    "key": "airtime",
+                    "value": 1178.21
+                },
+                {
+                    "key": "bankCharges",
+                    "value": 2558.33
+                },
+                {
+                    "key": "chequeWithdrawal",
+                    "value": 0
+                },
+                {
+                    "key": "cashWithdrawal",
+                    "value": 2100
+                },
+                {
+                    "key": "shopping",
+                    "value": 0
+                },
+                {
+                    "key": "eatingOut",
+                    "value": 0
+                }
+            ]
+        },
+        "transactionPatternAnalysis": {
+            "MAWWZeroBalanceInAccount": {
+                "month": "February",
+                "week_of_month": 8
+            },
+            "NODWBalanceLess5000": 24,
+            "NODWBalanceLess": {
+                "amount": 5000,
+                "count": 24
+            },
+            "highestMAWOCredit": {
+                "month": "April",
+                "week_of_month": 4
+            },
+            "highestMAWODebit": {
+                "month": "May",
+                "week_of_month": 2
+            },
+            "lastDateOfCredit": "2022-05-06",
+            "lastDateOfDebit": "2022-05-06",
+            "mostFrequentBalanceRange": "\u003c10000",
+            "mostFrequentTransactionRange": "\u003c10000",
+            "recurringExpense": [
+                {
+                    "amount": 10026.88,
+                    "description": "NEXTGENUSR TRF/Payment of money/FRM FAITH OLUWASEYI OLODU TO  AMEENAH OYINKANSOLA OYESOJI- 033"
+                },
+                {
+                    "amount": 2010.75,
+                    "description": "NEXTGENUSR TRF/From Benson/FRM FAITH OLUWASEYI OLODU TO CHINENYE JENNIFER MADU- 057"
+                },
+                {
+                    "amount": 2500,
+                    "description": "FLEXSWITCH WT|KENNETH UGOCHI UNACHI ABAKALIKI NG"
+                }
+            ],
+            "transactionsBetween100000And500000": 0,
+            "transactionsBetween10000And100000": 22,
+            "transactionsGreater500000": 0,
+            "transactionsLess10000": 85,
+            "transactionRanges": [
+                {
+                    "min": 10000,
+                    "max": 100000,
+                    "count": 22
+                },
+                {
+                    "min": 100000,
+                    "max": 500000,
+                    "count": 0
+                },
+                {
+                    "min": null,
+                    "max": 10000,
+                    "count": 85
+                },
+                {
+                    "min": 500000,
+                    "max": null,
+                    "count": 0
+                }
+            ]
+        }
+    }
+}
