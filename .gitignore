@@ -130,3 +130,4 @@ dmypy.json
 /models
 notepad.py
 *.env
+ai_assistant.py
