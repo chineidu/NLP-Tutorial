@@ -131,3 +131,4 @@ dmypy.json
 notepad.py
 *.env
 ai_assistant.py
+notebook/05_LLM/06_LAB.ipynb
