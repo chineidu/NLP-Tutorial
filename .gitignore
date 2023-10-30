@@ -134,3 +134,4 @@ ai_assistant.py
 notebook/05_LLM/06_LAB.ipynb
 notebook/06_Transformers/my_data
 *.parquet
+notebook/06_Transformers/bert-finetuned-sequence-classification
