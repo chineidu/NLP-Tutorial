@@ -1,3 +1,4 @@
+accelerate==0.24.0
 chromadb==0.4.3
 datasets==2.14.4
 DateTime==5.2
@@ -15,6 +16,7 @@ multiprocess==0.70.15
 nb-black==1.0.7
 openai==0.27.8
 pip-chill==1.0.1
+pinecone-client==2.2.4
 pre-commit==2.21.0
 pyarrow==13.0.0
 pydub==0.25.1
@@ -23,11 +25,13 @@ python-dotenv==1.0.0
 ruff==0.1.4
 safetensors==0.3.3
 seaborn==0.12.2
+sentence-transformers==2.2.2
 scikit-learn==1.2.1
 spacy==3.5.0
 tensorflow==2.13
 tiktoken==0.4.0
-torch==2.0.1
+torch==2.1.1
+torchvision==0.16.1
 transformers==4.32.0
 xxhash==3.3.0
 wikipedia==1.4.0
