@@ -22,6 +22,7 @@ pyarrow==13.0.0
 pydub==0.25.1
 pypdf==3.13.0
 python-dotenv==1.0.0
+qdrant-client==1.6.9
 ruff==0.1.4
 safetensors==0.3.3
 seaborn==0.12.2
