@@ -20,6 +20,7 @@ numba==0.58.1
 openai==0.27.8
 pip-chill==1.0.1
 pinecone-client==2.2.4
+plotly==5.18.0
 pre-commit==2.21.0
 pyarrow==13.0.0
 pydub==0.25.1
