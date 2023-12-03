@@ -1,5 +1,6 @@
 accelerate==0.24.0
 chromadb==0.4.3
+cython==0.29.36
 datasets==2.14.4
 DateTime==5.2
 dill==0.3.7
@@ -7,6 +8,7 @@ docarray==0.36.0
 dvc==2.43.1
 dvc-gdrive==2.19.1
 feature-engine==1.5.2
+hdbscan==0.8.33
 jq==1.4.1
 jupyter
 langchain==0.0.245
