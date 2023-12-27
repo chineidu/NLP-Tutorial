@@ -28,28 +28,6 @@ def cli(ctx, language: str, task: str) -> None:
     ctx.obj["TASK"] = task
 
 
-# @typechecked
-# @cli.command()
-# @click.option("--language", help="Name of programming language", default="python")
-# @click.option("--task", help="The task you want to perform", default="generate a list of numbers")
-# def code_gen(language: str, task: str) -> str:
-#     """This function is used to create a code generation program using Langchain and an LLM."""
-#     OPENAI_API_KEY: str = load_credentials()
-#     # Create LLM
-#     llm: OpenAI = OpenAI(openai_api_key=OPENAI_API_KEY)
-
-#     # Used for text completion LLMs
-#     prompt_template: str = """Write a very short {language} function that will {task}"""
-#     code_prompt: PromptTemplate = PromptTemplate(
-#         input_variables=["language", "task"], template=prompt_template
-#     )
-#     code_chain: LLMChain = LLMChain(llm=llm, prompt=code_prompt)
-
-#     result = code_chain(inputs={"language": language, "task": task}).get("text")
-#     click.secho(message=result, fg="green")
-#     return result
-
-
 @typechecked
 @cli.command()
 @click.pass_context
