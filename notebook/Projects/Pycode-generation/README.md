@@ -11,11 +11,14 @@
 
 ```sh
 # get help
-python main.py --help
+python notebook/Projects/Pycode-generation/Simple_code_gen/main.py --help
 
 # Run Program
-main.py --language rust --task 'a fibonaci sequuence function' code-gen
-python main.py --language 'typescript' --task 'a fibonaci sequuence function' test-gen
+python notebook/Projects/Pycode-generation/Simple_code_gen/main.py \
+  --language rust --task 'a fibonaci sequence function' code-gen
+
+python notebook/Projects/Pycode-generation/Simple_code_gen/main.py \
+  --language go --task 'read a parquet file from S3' test-gen
 ```
 
 ## Terminal Chatbot Program

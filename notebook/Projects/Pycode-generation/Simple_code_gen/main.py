@@ -8,6 +8,10 @@ from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from typeguard import typechecked
 
+# Params
+OPENAI_GPT_MODEL: str = "gpt-3.5-turbo-instruct"
+TEMPERATURE: float = 0.8
+
 
 @typechecked
 def load_credentials() -> Optional[str]:
@@ -35,7 +39,11 @@ def code_gen(ctx: Any) -> str:
     """This function is used to create a code generation program using Langchain and an LLM."""
     OPENAI_API_KEY: str = load_credentials()
     # Create LLM
-    llm: OpenAI = OpenAI(openai_api_key=OPENAI_API_KEY)
+    llm: OpenAI = OpenAI(
+        openai_api_key=OPENAI_API_KEY,
+        model=OPENAI_GPT_MODEL,
+        temperature=TEMPERATURE,
+    )
 
     # Used for text completion LLMs
     prompt_template: str = """Write a very short {language} function that will {task}"""
@@ -58,7 +66,11 @@ def test_gen(ctx: Any) -> str:
     """This function is used to create a test for a code generated using Langchain and an LLM."""
     OPENAI_API_KEY: str = load_credentials()
     # Create LLM
-    llm: OpenAI = OpenAI(openai_api_key=OPENAI_API_KEY)
+    llm: OpenAI = OpenAI(
+        openai_api_key=OPENAI_API_KEY,
+        model=OPENAI_GPT_MODEL,
+        temperature=TEMPERATURE,
+    )
 
     # Used for text completion LLMs
     code_prompt_template: str = """Write a very short {language} function that will {task}"""
@@ -89,8 +101,6 @@ def test_gen(ctx: Any) -> str:
         input_variables=["language", "task"],
         output_variables=["code", "test"],
     )
-    # Hardcoded inputs!
-    language, task = ("Python", "generate a list of numbers")
 
     result: str = final_chain(
         inputs={"language": ctx.obj.get("LANGUAGE"), "task": ctx.obj.get("TASK")}
