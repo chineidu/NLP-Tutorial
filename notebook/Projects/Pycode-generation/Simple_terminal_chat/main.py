@@ -9,8 +9,6 @@ from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
-    PromptTemplate,
-    SystemMessagePromptTemplate,
 )
 from rich import print
 from typeguard import typechecked
