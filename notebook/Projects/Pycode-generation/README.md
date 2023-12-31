@@ -23,11 +23,9 @@ python notebook/Projects/Pycode-generation/Simple_code_gen/main.py \
 
 ## Terminal Chatbot Program
 
-```sh
-# get help
-python main.py --help
+[![image.png](https://i.postimg.cc/L4LTcLkT/image.png)](https://postimg.cc/nMVB7sPj)
 
+```sh
 # Run Program
-# main.py --language rust --task 'a fibonaci sequuence function' code-gen
-# python main.py --language 'typescript' --task 'a fibonaci sequuence function' test-gen
+python notebook/Projects/Pycode-generation/Simple_terminal_chat/main.py
 ```
