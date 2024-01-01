@@ -1,7 +1,7 @@
+# type: ignore
 from pathlib import Path
 
-from setuptools import setup, find_namespace_packages
-
+from setuptools import find_namespace_packages, setup
 
 style_packages = ["black==22.10.0", "isort==5.10.1", "pylint==2.15.10"]
 test_packages = ["pytest>=7.2.0", "pytest-cov==4.0.0"]
