@@ -6,7 +6,6 @@
   - [Table of Content](#table-of-content)
   - [Code Generator Program](#code-generator-program)
   - [Terminal Chatbot Program](#terminal-chatbot-program)
-  - [Facts Retriver App](#facts-retriver-app)
 
 ## Code Generator Program
 
@@ -29,13 +28,4 @@ python notebook/Projects/Pycode-generation/Simple_code_gen/main.py \
 ```sh
 # Run Program
 python notebook/Projects/Pycode-generation/Simple_terminal_chat/main.py
-```
-
-## Facts Retriver App
-
-[![image.png](https://i.postimg.cc/C1265dwx/image.png)](https://postimg.cc/ZBrLDb9G)
-
-```sh
-# Run Program
-python notebook/Projects/Retriever/Simple_doc_retriever/main.py
 ```
