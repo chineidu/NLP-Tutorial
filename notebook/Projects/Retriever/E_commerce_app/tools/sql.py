@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 from langchain.tools import Tool
+from pydantic import BaseModel
 from rich import print
 from typeguard import typechecked
 
@@ -38,13 +39,12 @@ def list_DB_tables() -> Optional[str]:
     print(f"[INFO]: Running `list_DB_tables` ...")
     cursor = conn.cursor()
     query: str = """
-                    SELECT name from sqlite_master
+                    SELECT name FROM sqlite_master
                         WHERE type='table';
                 """
     cursor.execute(query)
-    _tables: list[str] = cursor.fetchall()
-    tables: list[Any] = [x[0] for x in _tables]
-    result: str = ", ".join([f"'{x}'" for x in tables])
+    tables: Optional[list[str]] = cursor.fetchall()
+    result: str = ",\n".join([f"'{x[0]}'" for x in tables])  # type: ignore
     return result
 
 
@@ -54,14 +54,13 @@ def describe_tables(db_tables: str) -> str:
     print(f"[INFO]: Running `describe_tables` ...")
     cursor = conn.cursor()
     query: str = f"""
-                    SELECT sql from sqlite_master
-                        WHERE type='table' and name IN ({db_tables});
+                    SELECT sql FROM sqlite_master
+                        WHERE type='table' AND name IN ({db_tables});
                 """
     try:
         cursor.execute(query)
-        _tables: list[str] = cursor.fetchall()
-        tables: list[Any] = [x[0] for x in _tables]
-        result: str = "\n".join([x for x in tables])
+        tables: Optional[list[str]] = cursor.fetchall()
+        result: str = "\n".join([x[0] for x in tables])  # type: ignore
         return result
 
     except sqlite3.OperationalError as err:
@@ -69,15 +68,29 @@ def describe_tables(db_tables: str) -> str:
         return f"{err}"
 
 
+# Schema
+class SqliteQuerySchema(BaseModel):
+    query: str
+
+
+class DescribeTablesSchema(BaseModel):
+    db_tables: str
+
+
 # Create tools with one arg
 run_query_tool: Tool = Tool.from_function(
     name="run_sqlite_query",
     description="This is used to run sqlite queries.",
     func=run_sqlite_query,
+    args_schema=SqliteQuerySchema,  # annotate the arg
 )
 
 run_describe_tables_tool: Tool = Tool.from_function(
     name="describe_tables",
     description="This is used to obtain the schema of the tables in the database.",
     func=describe_tables,
+    args_schema=DescribeTablesSchema,  # annotate the arg
 )
+
+
+# print(describe_tables(db_tables=list_DB_tables()))

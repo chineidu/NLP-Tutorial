@@ -13,7 +13,7 @@ feature-engine==1.5.2
 hdbscan==0.8.33
 jq==1.4.1
 jupyter
-langchain==0.0.245
+langchain==0.0.349
 lark==1.1.7
 llvmlite==0.41.1
 lxml==4.9.2

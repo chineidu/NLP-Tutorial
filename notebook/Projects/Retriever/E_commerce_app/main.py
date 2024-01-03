@@ -13,6 +13,7 @@ from langchain.prompts import (
 )
 from langchain.schema import SystemMessage
 from rich import print
+from tools.report import run_write_html_report_tool
 from tools.sql import list_DB_tables, run_describe_tables_tool, run_query_tool
 from typeguard import typechecked
 
@@ -27,11 +28,11 @@ def load_credentials() -> Optional[str]:
 
 # Params
 OPENAI_CHAT_MODEL: str = "gpt-3.5-turbo"
-TEMPERATURE: float = 0.8
+TEMPERATURE: float = 0.0
 DB_PATH: Path = Path("./data/db/db.sqlite")
 OPENAI_API_KEY: str = load_credentials()
 
-tools: Sequence[Any] = [run_query_tool, run_describe_tables_tool]
+tools: Sequence[Any] = [run_query_tool, run_describe_tables_tool, run_write_html_report_tool]
 
 
 # Create LLM
@@ -49,7 +50,7 @@ prompt = ChatPromptTemplate(
                 "You are an AI assistant that has access to a SQL database "
                 f"with the following tables: \n{db_tables}. Do not make any "
                 "assumptions about the table or column names. Instead, always use "
-                "the `describe_tables` function to get the table descriptions. "
+                "the `describe_tables` function to fetch the database information. "
             )
         ),
         HumanMessagePromptTemplate.from_template("{input}"),
@@ -72,5 +73,9 @@ agent_executor = AgentExecutor(
     tools=tools,
 )
 
-query: str = "How many users have provided a shipping address?"
-agent_executor(query)
+# query: str = "How many users have provided a shipping address?"
+# query: str = "What are the top 10 expensive products?"
+query: str = "Summarize the top 5 most expensive products and create a report"
+
+agent_executor.invoke({"input": query})
+# agent_executor(query)
