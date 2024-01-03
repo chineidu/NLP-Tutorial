@@ -21,18 +21,18 @@ except sqlite3.OperationalError as err:
 
 
 @typechecked
-def run_sqlite_query(query: str) -> Optional[list[Any]]:
+def run_sqlite_query(query: str) -> Union[list[Any], str]:
     """This is used to run sqlite queries."""
     print(f"[INFO]: Running `run_sqlite_query` ...")
     try:
         cursor = conn.cursor()
         cursor.execute(query)
-        result: Optional[list[Any]] = cursor.fetchall()  # type: ignore
+        result: list[Any] = cursor.fetchall()  # type: ignore
         return result
 
     except sqlite3.OperationalError as err:
         print(f"[ERROR]: {err}")
-        return [err]
+        return f"{err}"
 
 
 @typechecked
