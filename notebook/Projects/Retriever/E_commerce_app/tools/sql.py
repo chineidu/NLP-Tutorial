@@ -1,0 +1,83 @@
+import os
+import sqlite3
+from pathlib import Path
+from typing import Any, Optional, Union
+
+from langchain.tools import Tool
+from rich import print
+from typeguard import typechecked
+
+# Params
+DB_PATH: Path = Path("./data/db/db.sqlite")
+
+# Create connection to the DB
+try:
+    print(f"[INFO]: Creating connection to the DB ...")
+    conn = sqlite3.connect(DB_PATH)
+except sqlite3.OperationalError as err:
+    print(f"[ERROR]: Error loading DB. {err}")
+
+
+@typechecked
+def run_sqlite_query(query: str) -> Union[list[Any], str]:
+    """This is used to run sqlite queries."""
+    print(f"[INFO]: Running `run_sqlite_query` ...")
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        return cursor.fetchall()
+
+    except sqlite3.OperationalError as err:
+        print(f"[ERROR]: {err}")
+        return f"{err}"
+
+
+@typechecked
+def list_DB_tables() -> Optional[str]:
+    """This returns the list of table names present in the database."""
+    print(f"[INFO]: Running `list_DB_tables` ...")
+    cursor = conn.cursor()
+    query: str = """
+                    SELECT name from sqlite_master
+                        WHERE type='table';
+                """
+    cursor.execute(query)
+    _tables: list[str] = cursor.fetchall()
+    tables: list[Any] = [x[0] for x in _tables]
+    result: str = ", ".join([f"'{x}'" for x in tables])
+    return result
+
+
+@typechecked
+def describe_tables(db_tables: str) -> str:
+    """This is used to obtain the schema of the tables in the database."""
+    print(f"[INFO]: Running `describe_tables` ...")
+    cursor = conn.cursor()
+    query: str = f"""
+                    SELECT sql from sqlite_master
+                        WHERE type='table' and name IN ({db_tables});
+                """
+    try:
+        cursor.execute(query)
+        _tables: list[str] = cursor.fetchall()
+        tables: list[Any] = [x[0] for x in _tables]
+        result: str = "\n".join([x for x in tables])
+        return result
+
+    except sqlite3.OperationalError as err:
+        print(f"[ERROR]: {err}")
+        return f"{err}"
+
+
+# Create tools with one arg
+run_query_tool: Tool = Tool.from_function(
+    name="run_sqlite_query",
+    description="This is used to run sqlite queries.",
+    func=run_sqlite_query,
+)
+
+run_describe_tables_tool: Tool = Tool.from_function(
+    name="describe_tables",
+    description="This is used to obtain the schema of the tables in the database.",
+    func=describe_tables,
+)
