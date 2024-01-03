@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
+import openai
 from dotenv import find_dotenv, load_dotenv
 from langchain.agents import AgentExecutor, OpenAIFunctionsAgent
 from langchain.chat_models import ChatOpenAI
@@ -48,7 +49,7 @@ prompt = ChatPromptTemplate(
         SystemMessage(
             content=(
                 "You are an AI assistant that has access to a SQL database "
-                f"with the following tables: \n{db_tables}. Do not make any "
+                f"with the following tables: {db_tables}. Do not make any "
                 "assumptions about the table or column names. Instead, always use "
                 "the `describe_tables` function to fetch the database information. "
             )
@@ -75,7 +76,10 @@ agent_executor = AgentExecutor(
 
 # query: str = "How many users have provided a shipping address?"
 # query: str = "What are the top 10 expensive products?"
-query: str = "Summarize the top 5 most expensive products and create a report"
+query: str = "Summarize the top 5 most popular products. Create a report."
 
-agent_executor.invoke({"input": query})
+try:
+    agent_executor.invoke({"input": query})
+except openai.InvalidRequestError as err:
+    print(f"[ERROR]: {err}")
 # agent_executor(query)

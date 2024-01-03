@@ -1,13 +1,14 @@
-import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Optional, Union
 
+import langchain
 from langchain.tools import Tool
 from pydantic import BaseModel
 from rich import print
 from typeguard import typechecked
 
+# langchain.debug = True
 # Params
 DB_PATH: Path = Path("./data/db/db.sqlite")
 
@@ -20,17 +21,18 @@ except sqlite3.OperationalError as err:
 
 
 @typechecked
-def run_sqlite_query(query: str) -> Union[list[Any], str]:
+def run_sqlite_query(query: str) -> Optional[list[Any]]:
     """This is used to run sqlite queries."""
     print(f"[INFO]: Running `run_sqlite_query` ...")
     try:
         cursor = conn.cursor()
         cursor.execute(query)
-        return cursor.fetchall()
+        result: Optional[list[Any]] = cursor.fetchall()  # type: ignore
+        return result
 
     except sqlite3.OperationalError as err:
         print(f"[ERROR]: {err}")
-        return f"{err}"
+        return [err]
 
 
 @typechecked
@@ -44,23 +46,27 @@ def list_DB_tables() -> Optional[str]:
                 """
     cursor.execute(query)
     tables: Optional[list[str]] = cursor.fetchall()
-    result: str = ",\n".join([f"'{x[0]}'" for x in tables])  # type: ignore
+    result: str = ", ".join([f"'{x[0]}'" for x in tables])  # type: ignore
     return result
 
 
 @typechecked
-def describe_tables(db_tables: str) -> str:
+def describe_tables(db_table: str) -> str:
     """This is used to obtain the schema of the tables in the database."""
     print(f"[INFO]: Running `describe_tables` ...")
     cursor = conn.cursor()
     query: str = f"""
                     SELECT sql FROM sqlite_master
-                        WHERE type='table' AND name IN ({db_tables});
+                        WHERE type='table' AND name IN ('{db_table}');
+                """
+    queryy: str = f"""
+                    SELECT sql FROM sqlite_master
+                        WHERE type='table' AND name IN ('products');
                 """
     try:
         cursor.execute(query)
         tables: Optional[list[str]] = cursor.fetchall()
-        result: str = "\n".join([x[0] for x in tables])  # type: ignore
+        result: str = "\n\n".join([x[0] for x in tables])  # type: ignore
         return result
 
     except sqlite3.OperationalError as err:
@@ -87,10 +93,15 @@ run_query_tool: Tool = Tool.from_function(
 
 run_describe_tables_tool: Tool = Tool.from_function(
     name="describe_tables",
-    description="This is used to obtain the schema of the tables in the database.",
+    description=(
+        "This is used to obtain the schema of the tables and "
+        "the respective columns in the database."
+    ),
     func=describe_tables,
     args_schema=DescribeTablesSchema,  # annotate the arg
 )
 
 
 # print(describe_tables(db_tables=list_DB_tables()))
+
+# print(list_DB_tables())
