@@ -139,3 +139,4 @@ notebook/06_Transformers/my_data
 notebook/06_Transformers/bert-finetuned-sequence-classification
 qdrant_storage
 data
+temp
