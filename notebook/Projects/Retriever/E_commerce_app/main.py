@@ -4,6 +4,7 @@ from typing import Any, Optional, Sequence
 
 import openai
 from dotenv import find_dotenv, load_dotenv
+from handlers.on_chat_model_start import ChatModelStartHandler
 from langchain.agents import AgentExecutor, OpenAIFunctionsAgent
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
@@ -33,6 +34,8 @@ TEMPERATURE: float = 0.0
 DB_PATH: Path = Path("./data/db/db.sqlite")
 OPENAI_API_KEY: str = load_credentials()
 
+handler: Any = ChatModelStartHandler()
+
 tools: Sequence[Any] = [
     run_query_tool,
     run_describe_tables_tool,
@@ -45,6 +48,7 @@ chat_llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
     model=OPENAI_CHAT_MODEL,
     temperature=TEMPERATURE,
+    callbacks=[handler],
 )
 db_tables: str = list_DB_tables()
 
@@ -79,7 +83,7 @@ agent = OpenAIFunctionsAgent(
 # Executor: runs an agent until the response is NOT a func call
 agent_executor = AgentExecutor(
     memory=memory,  # Add memory!
-    verbose=True,
+    # verbose=True,
     agent=agent,
     tools=tools,
 )

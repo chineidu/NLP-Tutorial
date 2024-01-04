@@ -1,6 +1,5 @@
 accelerate==0.24.0
 bertopic==0.16.0
-boxprint==0.0.15
 rank_bm25==0.2.2
 chromadb==0.4.3
 cython==0.29.36
@@ -29,6 +28,7 @@ pinecone-text==0.7.1
 plotly==5.18.0
 pre-commit==2.21.0
 pyarrow==13.0.0
+pyboxen==1.2.0
 pydub==0.25.1
 pynndescent==0.5.11
 pypdf==3.13.0

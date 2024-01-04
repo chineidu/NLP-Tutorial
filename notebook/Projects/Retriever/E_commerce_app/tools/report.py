@@ -3,14 +3,16 @@ from typing import Any
 
 from langchain.tools import StructuredTool
 from pydantic import BaseModel
-from rich import print
+from rich.console import Console
 from typeguard import typechecked
+
+console = Console()
 
 
 @typechecked
 def write_html_report(file_name: Path, html: str) -> None:
     """This is used to write the html report to the specified file_name."""
-    print(f"[INFO]: Writing html report ...")
+    console.print(f"[INFO]: Writing html report ...", style="bold green")
     with open(file_name, "w") as fp:
         fp.write(html)
 
