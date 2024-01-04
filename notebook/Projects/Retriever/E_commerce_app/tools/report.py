@@ -28,5 +28,5 @@ run_write_html_report_tool = StructuredTool.from_function(
         "file_name whenever someone asks for a report."
     ),
     func=write_html_report,
-    args_schema=WriteHTMLReport,
+    args_schema=WriteHTMLReport,  # Add schema!
 )

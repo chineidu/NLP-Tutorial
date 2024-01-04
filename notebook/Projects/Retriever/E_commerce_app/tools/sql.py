@@ -88,7 +88,7 @@ run_query_tool: Tool = Tool.from_function(
     name="run_sqlite_query",
     description="This is used to run sqlite queries.",
     func=run_sqlite_query,
-    args_schema=SqliteQuerySchema,  # annotate the arg
+    args_schema=SqliteQuerySchema,  # Add schema!
 )
 
 run_describe_tables_tool: Tool = Tool.from_function(
@@ -98,7 +98,7 @@ run_describe_tables_tool: Tool = Tool.from_function(
         "the respective columns in the database."
     ),
     func=describe_tables,
-    args_schema=DescribeTablesSchema,  # annotate the arg
+    args_schema=DescribeTablesSchema,  # Add schema!
 )
 
 

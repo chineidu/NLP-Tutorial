@@ -15,7 +15,9 @@
       - [Langchain Behind The Scenes](#langchain-behind-the-scenes)
     - [Error Handling 1](#error-handling-1)
     - [Error Handling 2](#error-handling-2)
-    - [Add Better Descriptions For Tools Arguments](#add-better-descriptions-for-tools-arguments)
+    - [Add Better Descriptions For Tools Arguments Using Schema](#add-better-descriptions-for-tools-arguments-using-schema)
+    - [Run App](#run-app)
+    - [Adding Callbacks](#adding-callbacks)
 
 
 ## Facts Retriver App
@@ -75,12 +77,33 @@ Table Names:
 'users', 'addresses', 'products', 'carts', 'orders', 'order_products'
 ```
 
-### Add Better Descriptions For Tools Arguments
+### Add Better Descriptions For Tools Arguments Using Schema
 
 ```python
+from pydantic import BaseModel
 
+class WriteHTMLReport(BaseModel)
+    file_name: Path
+    html: str
+
+# Agents with more than one arg
+run_write_html_report_tool = StructuredTool.from_function(
+    name="write_html_report",
+    description=(
+        "This is used to write the html report to the specified"
+        "file_name whenever someone asks for a report."
+    ),
+    func=write_html_report,
+    args_schema=WriteHTMLReport, # Add schema!
 ```
+
+### Run App
 
 ```sh
-
+# Run app
+python notebook/Projects/Retriever/E_commerce_app/main.py
 ```
+
+### Adding Callbacks
+
+[![image.png](https://i.postimg.cc/P56f5C1F/image.png)](https://postimg.cc/bZtf6NCQ)
