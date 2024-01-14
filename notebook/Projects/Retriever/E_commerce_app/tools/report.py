@@ -18,6 +18,8 @@ def write_html_report(file_name: Path, html: str) -> None:
 
 
 class WriteHTMLReport(BaseModel):
+    """This is the schema for `write_html_report` tool."""
+
     file_name: Path
     html: str
 

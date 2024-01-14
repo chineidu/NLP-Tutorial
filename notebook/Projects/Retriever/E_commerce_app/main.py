@@ -62,18 +62,19 @@ prompt = ChatPromptTemplate(
                 "the `describe_tables` function to fetch the database information. "
             )
         ),
-        # track the conversations with MessagesPlaceholder
+        # Track the conversations with MessagesPlaceholder
         # chat_history contains the Human and the AI Messages
         MessagesPlaceholder(variable_name="chat_history"),
         HumanMessagePromptTemplate.from_template("{input}"),
         # variable_name `agent_scratchpad` is compulsory
-        # track the conversations with MessagesPlaceholder
+        # Track the conversations from the agents with MessagesPlaceholder
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ]
 )
 
 memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-# Agents: chains that know how to use tools
+
+# ==== Agents: chains that know how to use tools ====
 agent = OpenAIFunctionsAgent(
     llm=chat_llm,
     tools=tools,
@@ -83,7 +84,7 @@ agent = OpenAIFunctionsAgent(
 # Executor: runs an agent until the response is NOT a func call
 agent_executor = AgentExecutor(
     memory=memory,  # Add memory!
-    # verbose=True,
+    verbose=True,  # You can comment if a hander is active
     agent=agent,
     tools=tools,
 )
@@ -91,7 +92,8 @@ agent_executor = AgentExecutor(
 # query: str = "How many users have provided a shipping address?"
 # query: str = "What are the top 10 expensive products?"
 # query_1: str = "Summarize the top 5 most popular products. Create a report."
-query_1: str = "How many order are there? Create a report."
+
+query_1: str = "How many orders are there? Create a report."
 query_2: str = "Repeat the exact process for the users."
 
 try:

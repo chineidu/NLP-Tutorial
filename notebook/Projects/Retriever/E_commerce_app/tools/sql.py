@@ -47,6 +47,7 @@ def list_DB_tables() -> Optional[str]:
                 """
     cursor.execute(query)
     tables: Optional[list[str]] = cursor.fetchall()
+    # Return the table names as string
     result: str = ", ".join([f"'{x[0]}'" for x in tables])  # type: ignore
     return result
 
@@ -63,6 +64,7 @@ def describe_tables(db_table: str) -> str:
     try:
         cursor.execute(query)
         tables: Optional[list[str]] = cursor.fetchall()
+        # Return the table schema as string
         result: str = "\n\n".join([x[0] for x in tables])  # type: ignore
         return result
 
@@ -73,14 +75,18 @@ def describe_tables(db_table: str) -> str:
 
 # Schema
 class SqliteQuerySchema(BaseModel):
+    """This is the schema for `run_query_tool` tool."""
+
     query: str
 
 
 class DescribeTablesSchema(BaseModel):
+    """This is the schema for `run_describe_tables_tool` tool."""
+
     db_table: str
 
 
-# Create tools with one arg
+# ==== Create tools with one arg ====
 run_query_tool: Tool = Tool.from_function(
     name="run_sqlite_query",
     description="This is used to run sqlite queries.",

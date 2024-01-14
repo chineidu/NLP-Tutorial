@@ -1,7 +1,7 @@
 accelerate==0.24.0
 bertopic==0.16.0
 rank_bm25==0.2.2
-chromadb==0.4.3
+chromadb==0.3.8
 cython==0.29.36
 datasets==2.14.4
 DateTime==5.2
@@ -29,6 +29,7 @@ plotly==5.18.0
 pre-commit==2.21.0
 pyarrow==13.0.0
 pyboxen==1.2.0
+pydantic==1.10.13
 pydub==0.25.1
 pynndescent==0.5.11
 pypdf==3.13.0
