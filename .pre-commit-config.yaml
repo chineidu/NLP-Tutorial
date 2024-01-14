@@ -18,7 +18,7 @@ repos:
         entry: mypy
         language: python
         "types_or": [python, pyi]
-        exclude: ^tests/
+        exclude: ^(tests|notebook/Projects/Retriever/pdf-dist)
         args:
           [
             "--ignore-missing-imports",
@@ -34,5 +34,6 @@ repos:
       # Run the linter.
       - id: ruff
         args: [--fix]
+        exclude: ^(notebook/Projects/Retriever/pdf-dist|directory2)/  # Exclude multiple directories using a regular expression
       # Run the formatter.
       - id: ruff-format
