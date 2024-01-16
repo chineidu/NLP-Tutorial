@@ -1,6 +1,5 @@
+from typing import TypeVar, Optional, Type, List
 from abc import abstractmethod
-from typing import List, Optional, Type, TypeVar
-
 from app.web.db import db
 
 T = TypeVar("T", bound="BaseModel")

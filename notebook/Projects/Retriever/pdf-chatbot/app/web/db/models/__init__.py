@@ -1,5 +1,5 @@
-from .base import BaseModel as Model
+from .user import User
+from .pdf import Pdf
 from .conversation import Conversation
 from .message import Message
-from .pdf import Pdf
-from .user import User
+from .base import BaseModel as Model

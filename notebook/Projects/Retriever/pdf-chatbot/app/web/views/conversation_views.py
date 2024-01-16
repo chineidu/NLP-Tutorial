@@ -1,7 +1,7 @@
-from app.chat import ChatArgs, build_chat
-from app.web.db.models import Conversation, Pdf
-from app.web.hooks import load_model, login_required
-from flask import Blueprint, Response, g, jsonify, request, stream_with_context
+from flask import Blueprint, g, request, Response, jsonify, stream_with_context
+from app.web.hooks import login_required, load_model
+from app.web.db.models import Pdf, Conversation
+from app.chat import build_chat, ChatArgs
 
 bp = Blueprint("conversation", __name__, url_prefix="/api/conversations")
 

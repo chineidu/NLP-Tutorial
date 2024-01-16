@@ -1,9 +1,9 @@
-from app.web import files
-from app.web.db.models import Pdf
-from app.web.hooks import handle_file_upload, load_model, login_required
-from app.web.tasks.embeddings import process_document
 from flask import Blueprint, g, jsonify
 from werkzeug.exceptions import Unauthorized
+from app.web.hooks import login_required, handle_file_upload, load_model
+from app.web.db.models import Pdf
+from app.web.tasks.embeddings import process_document
+from app.web import files
 
 bp = Blueprint("pdf", __name__, url_prefix="/api/pdfs")
 

@@ -1,16 +1,18 @@
-from app.celery import celery_init_app
-from app.web.config import Config
-from app.web.db import db, init_db_command, models
-from app.web.hooks import add_headers, handle_error, load_logged_in_user
-from app.web.views import (
-    auth_views,
-    client_views,
-    conversation_views,
-    pdf_views,
-    score_views,
-)
 from flask import Flask
 from flask_cors import CORS
+
+from app.web.db import db, init_db_command
+from app.web.db import models
+from app.celery import celery_init_app
+from app.web.config import Config
+from app.web.hooks import load_logged_in_user, handle_error, add_headers
+from app.web.views import (
+    auth_views,
+    pdf_views,
+    score_views,
+    client_views,
+    conversation_views,
+)
 
 
 def create_app():

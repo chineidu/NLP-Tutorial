@@ -1,17 +1,25 @@
 # First Time Setup
 
-## Table of Content
+## Using Pipenv [Recommended]
 
-- [First Time Setup](#first-time-setup)
-  - [Table of Content](#table-of-content)
-  - [Running the app](#running-the-app)
-    - [To run the Python server](#to-run-the-python-server)
-    - [To run the worker](#to-run-the-worker)
-    - [To run Redis](#to-run-redis)
-    - [To reset the database](#to-reset-the-database)
+```
+# Install dependencies
+pipenv install
 
-```sh
 # Create a virtual environment
+pipenv shell
+
+# Initialize the database
+flask --app app.web init-db
+
+```
+
+## Using Venv [Optional]
+
+These instructions are included if you wish to use venv to manage your evironment and dependencies instead of Pipenv.
+
+```
+# Create the venv virtual environment
 python -m venv .venv
 
 # On MacOS, WSL, Linux
@@ -27,7 +35,7 @@ pip install -r requirements.txt
 flask --app app.web init-db
 ```
 
-## Running the app
+# Running the app [Pipenv]
 
 There are three separate processes that need to be running for the app to work: the server, the worker, and Redis.
 
@@ -37,24 +45,118 @@ Commands to start each are listed below. If you need to stop them, select the te
 
 ### To run the Python server
 
-```sh
+Open a new terminal window and create a new virtual environment:
+
+```
+pipenv shell
+```
+
+Then:
+
+```
 inv dev
 ```
 
 ### To run the worker
 
-```sh
+Open a new terminal window and create a new virtual environment:
+
+```
+pipenv shell
+```
+
+Then:
+
+```
 inv devworker
 ```
 
 ### To run Redis
 
-```sh
+```
 redis-server
 ```
 
 ### To reset the database
 
-```sh
+Open a new terminal window and create a new virtual environment:
+
+```
+pipenv shell
+```
+
+Then:
+
+```
+flask --app app.web init-db
+```
+
+# Running the app [Venv]
+
+_These instructions are included if you wish to use venv to manage your evironment and dependencies instead of Pipenv._
+
+There are three separate processes that need to be running for the app to work: the server, the worker, and Redis.
+
+If you stop any of these processes, you will need to start them back up!
+
+Commands to start each are listed below. If you need to stop them, select the terminal window the process is running in and press Control-C
+
+### To run the Python server
+
+Open a new terminal window and create a new virtual environment:
+
+```
+# On MacOS, WSL, Linux
+source .venv/bin/activate
+
+# On Windows
+.\.venv\Scripts\activate
+```
+
+Then:
+
+```
+inv dev
+```
+
+### To run the worker
+
+Open a new terminal window and create a new virtual environment:
+
+```
+# On MacOS, WSL, Linux
+source .venv/bin/activate
+
+# On Windows
+.\.venv\Scripts\activate
+```
+
+Then:
+
+```
+inv devworker
+```
+
+### To run Redis
+
+```
+redis-server
+```
+
+### To reset the database
+
+Open a new terminal window and create a new virtual environment:
+
+```
+# On MacOS, WSL, Linux
+source .venv/bin/activate
+
+# On Windows
+.\.venv\Scripts\activate
+```
+
+Then:
+
+```
 flask --app app.web init-db
 ```
