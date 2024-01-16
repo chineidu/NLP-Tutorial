@@ -18,12 +18,16 @@ def create_embeddings_for_pdf(pdf_id: str, pdf_path: str):
     )
     loader = PyPDFLoader(file_path=pdf_path)
     docs: list[Any] = loader.load_and_split(text_splitter=text_splitter)
+
+    # Update metadata
+    for doc in docs:
+        doc.metadata: dict[str, Any] = {
+            "page": doc.metadata.get("page"),
+            "text": doc.page_content,
+            "pdf_id": pdf_id,
+        }
     vector_db = set_up_vector_db(documents=docs)
 
     console.print(f"{vector_db}\n", style="green")
 
     return vector_db
-
-
-# vector_store = create_embeddings_for_pdf()
-# console.print(f"[INFO]: {cr}")

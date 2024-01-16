@@ -76,7 +76,16 @@ inv dev
 
 ### To run the worker
 
-Open a new terminal window and create a new virtual environment:
+- Install redis
+
+```sh
+brew install redis
+
+# Start the redis server
+redis-server
+```
+
+- Open a new terminal window and create a new virtual environment:
 
 ```sh
 poetry shell
@@ -138,7 +147,14 @@ inv dev
 
 ### To run the worker [Venv]
 
-Open a new terminal window and create a new virtual environment:
+```sh
+brew install redis
+
+# Start the redis server
+redis-server
+```
+
+- Open a new terminal window and create a new virtual environment:
 
 ```sh
 # On MacOS, WSL, Linux
