@@ -1,16 +1,16 @@
 from typing import Any
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from typeguard import typechecked
-from rich.console import Console
 
 from app.chat.vector_stores.qdrant import set_up_vector_db
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from rich.console import Console
+from typeguard import typechecked
 
 console = Console()
 
 
 @typechecked
-def create_embeddings_for_pdf(pdf_id: str, pdf_path: str):
+def create_embeddings_for_pdf(pdf_id: str, pdf_path: str) -> Any:
     """Generate and store embeddings for the given pdf."""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,

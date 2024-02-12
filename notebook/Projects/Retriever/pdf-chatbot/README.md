@@ -4,12 +4,13 @@
 
 - [First Time Setup](#first-time-setup)
   - [Table of Content](#table-of-content)
-  - [Using Poetry \[Recommended\]](#using-poetry-recommended)
+  - [1. Initial Step](#1-initial-step)
+  - [2. Using Poetry \[Recommended\]](#2-using-poetry-recommended)
   - [Using Venv \[Optional\]](#using-venv-optional)
-  - [Running the app \[Poetry\]](#running-the-app-poetry)
+  - [3. Running the app \[Poetry\]](#3-running-the-app-poetry)
     - [To run the Python server](#to-run-the-python-server)
+    - [Run The Vector Database Server](#run-the-vector-database-server)
     - [To run the worker](#to-run-the-worker)
-    - [To run Redis](#to-run-redis)
     - [To reset the database](#to-reset-the-database)
   - [Running the app \[Venv\]](#running-the-app-venv)
     - [To run the Python server \[Venv\]](#to-run-the-python-server-venv)
@@ -17,7 +18,15 @@
     - [To run Redis \[Venv\]](#to-run-redis-venv)
     - [To reset the database \[Venv\]](#to-reset-the-database-venv)
 
-## Using Poetry [Recommended]
+## 1. Initial Step
+
+- Create a `.env` file containing all the necessary environment variables by running:
+
+```sh
+cp example.env .env
+```
+
+## 2. Using Poetry [Recommended]
 
 ```sh
 # Install dependencies
@@ -52,7 +61,7 @@ pip install -r requirements.txt
 flask --app app.web init-db
 ```
 
-## Running the app [Poetry]
+## 3. Running the app [Poetry]
 
 There are three separate processes that need to be running for the app to work: the server, the worker, and Redis.
 
@@ -66,17 +75,22 @@ Open a new terminal window and create a new virtual environment:
 
 ```sh
 poetry shell
+inv dev
 ```
 
-Then:
+### Run The Vector Database Server
+
+- Run it locally using Docker.
 
 ```sh
-inv dev
+# Run a Qdrant Docker image
+docker run -p 6333:6333 --rm --name vector_db \
+    -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
 ```
 
 ### To run the worker
 
-- Install redis
+1.) Install redis
 
 ```sh
 brew install redis
@@ -85,22 +99,13 @@ brew install redis
 redis-server
 ```
 
-- Open a new terminal window and create a new virtual environment:
+2.) Start up the worker:
+
+- Create a new terminal tab and run:
 
 ```sh
 poetry shell
-```
-
-Then:
-
-```sh
 inv devworker
-```
-
-### To run Redis
-
-```sh
-redis-server
 ```
 
 ### To reset the database
