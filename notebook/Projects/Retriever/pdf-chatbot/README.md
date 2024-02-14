@@ -1,9 +1,10 @@
-# First Time Setup
+# PDF Chat Bot
 
 ## Table of Content
 
-- [First Time Setup](#first-time-setup)
+- [PDF Chat Bot](#pdf-chat-bot)
   - [Table of Content](#table-of-content)
+  - [Requirements (To Do)](#requirements-to-do)
   - [1. Initial Step](#1-initial-step)
   - [2. Using Poetry \[Recommended\]](#2-using-poetry-recommended)
   - [Using Venv \[Optional\]](#using-venv-optional)
@@ -16,7 +17,16 @@
     - [To run the Python server \[Venv\]](#to-run-the-python-server-venv)
     - [To run the worker \[Venv\]](#to-run-the-worker-venv)
     - [To run Redis \[Venv\]](#to-run-redis-venv)
+  - [4 To Do](#4-to-do)
     - [To reset the database \[Venv\]](#to-reset-the-database-venv)
+
+## Requirements (To Do)
+
+- Celery: used for parallel execution of tasks and provides the facility to run programs/jobs in the background when the CPU is idle.
+- Add workers to handle multiple requests.
+- Document retrieval needs to be scoped to a particular PDF. i.e. so that if a user uploads 2 or more documents, the retrieval system know the exact document to query.
+- Messages and chats need to be persisted.
+- Handle vague user messages.
 
 ## 1. Initial Step
 
@@ -180,6 +190,10 @@ inv devworker
 ```sh
 redis-server
 ```
+
+## 4 To Do
+
+- Custom Message Histories (88)
 
 ### To reset the database [Venv]
 

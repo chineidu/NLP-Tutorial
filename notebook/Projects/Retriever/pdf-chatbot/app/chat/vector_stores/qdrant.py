@@ -1,10 +1,12 @@
 import os
 from typing import Any
-from langchain.vectorstores import Qdrant
 
-from dotenv import load_dotenv
-from typeguard import typechecked
 from app.chat.embeddings.openai import embedding_model
+from app.chat.models import ChatArgs
+from dotenv import load_dotenv
+from langchain.vectorstores import Qdrant
+from typeguard import typechecked
+
 # from app.chat.create_embeddings import d
 
 _ = load_dotenv()
@@ -26,3 +28,8 @@ def set_up_vector_db(documents: list[Any]) -> Any:
     )
 
     return vector_db
+
+
+def build_retriever(chat_args: ChatArgs) -> Any:
+    search_kwargs = {"filter": {"pdf_id": chat_args.pdf_id}}
+    return set_up_vector_db.as_retriever(search_kwargs=search_kwargs)
