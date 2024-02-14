@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Extra
 
 
@@ -12,3 +13,4 @@ class ChatArgs(BaseModel, extra=Extra.allow):
     pdf_id: str
     metadata: Metadata
     streaming: bool
+    # pdf_path: Optional[str]

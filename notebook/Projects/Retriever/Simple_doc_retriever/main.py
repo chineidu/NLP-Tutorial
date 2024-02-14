@@ -82,7 +82,7 @@ class CustomFactsRetriever(BaseModel):
         chain = RetrievalQA.from_chain_type(
             llm=chat_llm,
             retriever=retriever,
-            chain_type="stuff",  #  it feeds the LLM a prompt built from document list.
+            chain_type="stuff",  # it feeds the LLM a prompt built from document list.
             return_source_documents=True,  # to easily detect hallucination
             input_key="query",
         )

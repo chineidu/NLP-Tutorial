@@ -2,34 +2,29 @@ import os
 from typing import Any
 
 from app.chat.embeddings.openai import embedding_model
-from app.chat.models import ChatArgs
 from dotenv import load_dotenv
 from langchain.vectorstores import Qdrant
 from typeguard import typechecked
+from qdrant_client import QdrantClient
 
-# from app.chat.create_embeddings import d
+from app.chat.models import ChatArgs
 
 _ = load_dotenv()
 
 URL: str = "http://localhost:6333/"
 COLLECTION_NAME: str = os.getenv("QDRANT_COLLECTION_NAME")
 
+client = QdrantClient(url=URL)
+
+doc_store = Qdrant(
+    client=client,
+    collection_name=COLLECTION_NAME,
+    embeddings=embedding_model,
+)
+
 
 @typechecked
-def set_up_vector_db(documents: list[Any]) -> Any:
-    """This is used to create embeddings and upsert the embeddings to the collection."""
-    vector_db: Any = Qdrant.from_documents(
-        documents,
-        embedding_model,
-        url=URL,
-        prefer_grpc=False,
-        collection_name=COLLECTION_NAME,
-        force_recreate=False,
-    )
-
-    return vector_db
-
-
 def build_retriever(chat_args: ChatArgs) -> Any:
     search_kwargs = {"filter": {"pdf_id": chat_args.pdf_id}}
-    return set_up_vector_db.as_retriever(search_kwargs=search_kwargs)
+
+    return doc_store.as_retriever(search_kwargs=search_kwargs)

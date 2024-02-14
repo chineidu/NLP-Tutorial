@@ -1,10 +1,17 @@
+import logging
+import os
 from typing import Any
 
-from app.chat.vector_stores.qdrant import set_up_vector_db
+from app.chat.embeddings.openai import embedding_model
+from app.chat.models import ChatArgs
+from dotenv import load_dotenv
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Qdrant
 from rich.console import Console
 from typeguard import typechecked
+
+from app.chat.vector_stores.qdrant import COLLECTION_NAME, URL, doc_store
 
 console = Console()
 
@@ -21,13 +28,24 @@ def create_embeddings_for_pdf(pdf_id: str, pdf_path: str) -> Any:
 
     # Update metadata
     for doc in docs:
-        doc.metadata: dict[str, Any] = {
+        doc.metadata: dict[str, Any] = {  # type: ignore
             "page": doc.metadata.get("page"),
             "text": doc.page_content,
             "pdf_id": pdf_id,
         }
-    vector_db = set_up_vector_db(documents=docs)
-
-    console.print(f"{vector_db}\n", style="green")
+    # vector_db: Any = Qdrant.from_documents(
+    #     docs,
+    #     embedding_model,
+    #     url=URL,
+    #     prefer_grpc=False,
+    #     collection_name=COLLECTION_NAME,
+    #     force_recreate=False,
+    # )
+    vector_db = doc_store.from_documents(
+        docs,
+        embedding=embedding_model,
+        prefer_grpc=False,
+        force_recreate=False,
+    )
 
     return vector_db
