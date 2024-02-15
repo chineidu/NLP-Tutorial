@@ -11,7 +11,7 @@ from langchain.vectorstores import Qdrant
 from rich.console import Console
 from typeguard import typechecked
 
-from app.chat.vector_stores.qdrant import COLLECTION_NAME, URL, doc_store
+from app.chat.vector_stores.qdrant import doc_store
 
 console = Console()
 
@@ -33,14 +33,6 @@ def create_embeddings_for_pdf(pdf_id: str, pdf_path: str) -> Any:
             "text": doc.page_content,
             "pdf_id": pdf_id,
         }
-    # vector_db: Any = Qdrant.from_documents(
-    #     docs,
-    #     embedding_model,
-    #     url=URL,
-    #     prefer_grpc=False,
-    #     collection_name=COLLECTION_NAME,
-    #     force_recreate=False,
-    # )
     vector_db = doc_store.from_documents(
         docs,
         embedding=embedding_model,
