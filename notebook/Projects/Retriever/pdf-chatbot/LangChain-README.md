@@ -18,6 +18,9 @@
   - [Loading Files With Document Loaders](#loading-files-with-document-loaders)
     - [Text Loader](#text-loader)
   - [Embeddings](#embeddings)
+  - [Agents](#agents)
+  - [Streaming](#streaming)
+    - [Important Points](#important-points)
 
 ## Access An LLM Without Chains
 
@@ -280,3 +283,46 @@ for d in docs:
 ```
 
 ## Embeddings
+
+- In the field of Natural Language Processing (NLP), embeddings are a powerful technique for representing words, phrases, or sentences as dense numerical vectors.
+- These vectors capture semantic and syntactic relationships between words, allowing machines to process and understand text in a more meaningful way.
+
+[![image.png](https://i.postimg.cc/02BkcpJk/image.png)](https://postimg.cc/ppKMd5Z4)
+
+- Example of `embeddings` with a `vector database`
+
+```py
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Qdrant
+
+
+emb_model = OpenAIEmbeddings()
+url: str = "http://localhost:6333/"
+
+# Setup vector database
+qdrant = Qdrant.from_documents(
+    docs,
+    emb_model,
+    url=url,
+    prefer_grpc=False,
+    collection_name="facts",
+    force_recreate=False,
+)
+
+query: str = "What is an interesting fact about the English language"
+found_docs = qdrant.similarity_search(query, k=2)
+
+print(found_docs)
+```
+
+## Agents
+
+- [Official docs](https://python.langchain.com/docs/modules/agents/quick_start)
+- Check [here](https://github.com/chineidu/NLP-Tutorial/blob/main/notebook/Projects/Retriever/E_commerce_app) for examples on building agents and tools.
+
+## Streaming
+
+### Important Points
+
+- LLMs are happy to stream!
+- Chain are unhappy and don't want to stream!

@@ -103,8 +103,3 @@ run_describe_tables_tool: Tool = Tool.from_function(
     func=describe_tables,
     args_schema=DescribeTablesSchema,  # Add schema!
 )
-
-
-# console.print(describe_tables(db_tables=list_DB_tables()))
-
-# console.print(list_DB_tables())
