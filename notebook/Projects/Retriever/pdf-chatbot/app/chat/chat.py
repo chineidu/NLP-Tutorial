@@ -1,6 +1,6 @@
 from typing import Any
+from app.chat.chains.retrieval import StreamingConversationsalRetrievalChain
 
-# from app.chat.create_embeddings import build_retriever
 from app.chat.llms.chat_openai import build_llm
 from app.chat.memories.sql_memory import build_memory
 from app.chat.models import ChatArgs
@@ -14,4 +14,6 @@ def build_chat(chat_args: ChatArgs) -> None:
     llm = build_llm(chat_args=chat_args)
     memory = build_memory(chat_args=chat_args)
 
-    return ConversationalRetrievalChain.from_llm(llm=llm, memory=memory, retriever=retriever)
+    return StreamingConversationsalRetrievalChain.from_llm(
+        llm=llm, memory=memory, retriever=retriever
+    )
