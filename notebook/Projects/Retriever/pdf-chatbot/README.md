@@ -193,7 +193,7 @@ redis-server
 
 ## 4 To Do
 
-- Custom Message Histories (88)
+- Change the vector DB to Pinecone
 
 ### To reset the database [Venv]
 
