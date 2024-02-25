@@ -5,8 +5,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from rich.console import Console
 from typeguard import typechecked
 
-# from app.chat.vector_stores.qdrant import doc_store, COLLECTION_NAME
-from app.chat.vector_stores.pinecone import vector_store
+from app.chat.vector_stores.qdrant import vector_store
+# from app.chat.vector_stores.pinecone import vector_store
 
 console = Console()
 

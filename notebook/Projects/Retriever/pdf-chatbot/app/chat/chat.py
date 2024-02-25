@@ -5,8 +5,8 @@ from app.chat.llms.chat_openai import build_llm
 from app.chat.memories.sql_memory import build_memory
 from app.chat.models import ChatArgs
 
-# from app.chat.vector_stores.qdrant import build_retriever
-from app.chat.vector_stores.pinecone import build_retriever
+from app.chat.vector_stores.qdrant import build_retriever
+# from app.chat.vector_stores.pinecone import build_retriever
 
 
 def build_chat(chat_args: ChatArgs) -> None:
