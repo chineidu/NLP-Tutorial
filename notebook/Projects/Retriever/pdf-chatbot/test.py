@@ -1,15 +1,14 @@
-from collections.abc import Iterator
-from typing import Any
-from langchain.chains import LLMChain
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.callbacks.base import BaseCallbackHandler
-from dotenv import load_dotenv
-from rich.console import Console
 from queue import Queue
 from threading import Thread
+from typing import Any
+
+from dotenv import load_dotenv
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.chains import LLMChain
+from langchain.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI
+from rich.console import Console
 
 console = Console()
 load_dotenv()

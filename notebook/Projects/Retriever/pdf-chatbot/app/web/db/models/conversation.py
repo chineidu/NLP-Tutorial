@@ -1,5 +1,8 @@
 import uuid
+from typing import Any
+
 from app.web.db import db
+
 from .base import BaseModel
 
 
@@ -21,7 +24,7 @@ class Conversation(BaseModel):
         "Message", back_populates="conversation", order_by="Message.created_on"
     )
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "pdf_id": self.pdf_id,

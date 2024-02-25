@@ -1,5 +1,6 @@
 import os
-from flask import Blueprint, send_from_directory, current_app
+
+from flask import Blueprint, current_app, send_from_directory
 
 bp = Blueprint(
     "client",

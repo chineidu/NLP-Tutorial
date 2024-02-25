@@ -1,13 +1,14 @@
-import click
 import os
-from flask_sqlalchemy import SQLAlchemy
+
+import click
 from flask import current_app
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
 
 @click.command("init-db")
-def init_db_command():
+def init_db_command() -> None:
     with current_app.app_context():
         try:
             os.makedirs(current_app.instance_path)

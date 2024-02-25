@@ -2,9 +2,10 @@ def score_conversation(
     conversation_id: str, score: float, llm: str, retriever: str, memory: str
 ) -> None:
     """
-    This function interfaces with langfuse to assign a score to a conversation, specified by its ID.
-    It creates a new langfuse score utilizing the provided llm, retriever, and memory components.
-    The details are encapsulated in JSON format and submitted along with the conversation_id and the score.
+    This function interfaces with langfuse to assign a score to a conversation,
+    specified by its ID. It creates a new langfuse score utilizing the provided llm,
+    retriever, and memory components. The details are encapsulated in JSON format and
+    submitted along with the conversation_id and the score.
 
     :param conversation_id: The unique identifier for the conversation to be scored.
     :param score: The score assigned to the conversation.
@@ -20,11 +21,12 @@ def score_conversation(
     pass
 
 
-def get_scores():
+def get_scores() -> None:
     """
-    Retrieves and organizes scores from the langfuse client for different component types and names.
-    The scores are categorized and aggregated in a nested dictionary format where the outer key represents
-    the component type and the inner key represents the component name, with each score listed in an array.
+    Retrieves and organizes scores from the langfuse client for different component types
+    and names. The scores are categorized and aggregated in a nested dictionary format
+    where the outer key represents the component type and the inner key represents the
+    component name, with each score listed in an array.
 
     The function accesses the langfuse client's score endpoint to obtain scores.
     If the score name cannot be parsed into JSON, it is skipped.

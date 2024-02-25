@@ -1,5 +1,8 @@
 import uuid
+from typing import Any
+
 from app.web.db import db
+
 from .base import BaseModel
 
 
@@ -15,7 +18,7 @@ class Pdf(BaseModel):
         order_by="desc(Conversation.created_on)",
     )
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,

@@ -1,12 +1,12 @@
 import os
 from typing import Any
 
-from app.chat.embeddings.openai import embedding_model
 from dotenv import load_dotenv
 from langchain.vectorstores import Qdrant
-from typeguard import typechecked
 from qdrant_client import QdrantClient
+from typeguard import typechecked
 
+from app.chat.embeddings.openai import embedding_model
 from app.chat.models import ChatArgs
 
 _ = load_dotenv()

@@ -1,16 +1,19 @@
 from queue import Queue
 from threading import Thread
-from app.chat.callbacks.stream import StreamingHandler
+from typing import Iterator
+
 from flask import current_app
+
+from app.chat.callbacks.stream import StreamingHandler
 
 
 class StreamableChainMixin:
-    def stream(self, input):
+    def stream(self, input) -> Iterator:
         """This is used to stream the input token from the LLM."""
         queue = Queue()
         handler = StreamingHandler(queue)
 
-        def task(app_context):
+        def task(app_context) -> None:
             """This is used to call/invoke the chain.
 
             Note:

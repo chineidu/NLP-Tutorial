@@ -1,18 +1,21 @@
 import functools
+import logging
+import os
 import tempfile
 import uuid
-import os
-import logging
-from flask import g, session, request
+from typing import Any
+
+from flask import g, request, session
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from werkzeug.exceptions import Unauthorized, BadRequest
-from app.web.db.models import User, Model
+from werkzeug.exceptions import BadRequest, Unauthorized
+
+from app.web.db.models import Model, User
 
 
-def load_model(Model: Model, extract_id_lambda=None):
-    def decorator(view):
+def load_model(Model: Model, extract_id_lambda=None) -> Any:
+    def decorator(view) -> Any:
         @functools.wraps(view)
-        def wrapped_view(**kwargs):
+        def wrapped_view(**kwargs) -> Any:
             model_name = Model.__name__.lower()
             model_id_name = f"{model_name}_id"
 
@@ -38,9 +41,9 @@ def load_model(Model: Model, extract_id_lambda=None):
     return decorator
 
 
-def login_required(view):
+def login_required(view) -> Any:
     @functools.wraps(view)
-    def wrapped_view(**kwargs):
+    def wrapped_view(**kwargs) -> Any:
         if g.user is None:
             return {"message": "Unauthorized"}, 401
         return view(**kwargs)
@@ -48,12 +51,12 @@ def login_required(view):
     return wrapped_view
 
 
-def add_headers(response):
+def add_headers(response) -> Any:
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
 
-def load_logged_in_user():
+def load_logged_in_user() -> Any:
     user_id = session.get("user_id")
 
     if user_id is None:
@@ -65,9 +68,9 @@ def load_logged_in_user():
             g.user = None
 
 
-def handle_file_upload(fn):
+def handle_file_upload(fn) -> Any:
     @functools.wraps(fn)
-    def wrapped(*args, **kwargs):
+    def wrapped(*args, **kwargs) -> Any:
         file = request.files["file"]
         file_id = str(uuid.uuid4())
 
@@ -83,17 +86,17 @@ def handle_file_upload(fn):
     return wrapped
 
 
-def handle_error(err):
+def handle_error(err) -> Any:
     if isinstance(err, IntegrityError):
         logging.error(err)
         return {"message": "In use"}, 400
-    elif isinstance(err, NoResultFound):
+    if isinstance(err, NoResultFound):
         logging.error(err)
         return {"message": "Not found"}, 404
-    elif isinstance(err, Unauthorized):
+    if isinstance(err, Unauthorized):
         logging.error(err)
         return {"message": err.description}, 401
-    elif isinstance(err, BadRequest):
+    if isinstance(err, BadRequest):
         logging.error(err)
         return {"message": err.description}, 401
 

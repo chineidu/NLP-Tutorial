@@ -1,5 +1,8 @@
 import uuid
+from typing import Any
+
 from app.web.db import db
+
 from .base import BaseModel
 
 
@@ -10,5 +13,5 @@ class User(BaseModel):
     pdfs = db.relationship("Pdf", back_populates="user")
     conversations = db.relationship("Conversation", back_populates="user")
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, Any]:
         return {"id": self.id, "email": self.email}

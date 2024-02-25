@@ -1,9 +1,9 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import BadRequest
 
-from app.web.hooks import login_required, load_model
+from app.chat import get_scores, score_conversation
 from app.web.db.models import Conversation
-from app.chat import score_conversation, get_scores
+from app.web.hooks import load_model, login_required
 
 bp = Blueprint("score", __name__, url_prefix="/api/scores")
 

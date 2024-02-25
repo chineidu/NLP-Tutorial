@@ -1,5 +1,6 @@
-from typing import TypeVar, Optional, Type, List
 from abc import abstractmethod
+from typing import Any, List, Optional, Type, TypeVar
+
 from app.web.db import db
 
 T = TypeVar("T", bound="BaseModel")
@@ -30,9 +31,8 @@ class BaseModel(db.Model):
         if instance:
             instance.update(commit, **kwargs)
             return instance
-        else:
-            instance = cls.create(**kwargs)
-            return instance
+        instance = cls.create(**kwargs)
+        return instance
 
     @classmethod
     def delete_by(cls, commit: bool = True, **kwargs) -> None:
@@ -43,14 +43,14 @@ class BaseModel(db.Model):
         return
 
     @classmethod
-    def as_dicts(cls, models):
+    def as_dicts(cls, models) -> list[dict[str, Any]]:
         return [m.as_dict() for m in models]
 
     @abstractmethod
-    def as_dict(self):
+    def as_dict(self) -> None:
         raise NotImplementedError
 
-    def update(self, commit=True, **kwargs):
+    def update(self, commit=True, **kwargs) -> None:
         for attr, value in kwargs.items():
             if attr != ["id"]:
                 setattr(self, attr, value)
@@ -58,7 +58,7 @@ class BaseModel(db.Model):
             return self.save()
         return self
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> T:
         db.session.add(self)
         if commit:
             db.session.commit()

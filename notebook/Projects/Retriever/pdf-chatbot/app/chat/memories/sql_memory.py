@@ -1,13 +1,14 @@
 from typing import Union
 
-from app.chat.models import ChatArgs
-from app.web.api import add_message_to_conversation, get_messages_by_conversation_id
-from app.web.db.models import Message
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import BaseChatMessageHistory
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages import BaseMessage
 from pydantic import BaseModel
+
+from app.chat.models import ChatArgs
+from app.web.api import add_message_to_conversation, get_messages_by_conversation_id
+from app.web.db.models import Message
 
 
 class SqlMessageHistory(BaseChatMessageHistory, BaseModel):
@@ -26,7 +27,7 @@ class SqlMessageHistory(BaseChatMessageHistory, BaseModel):
         return NotImplementedError
 
 
-def build_memory(chat_args: ChatArgs):
+def build_memory(chat_args: ChatArgs) -> ConversationBufferMemory:
     return ConversationBufferMemory(
         chat_memory=SqlMessageHistory(conversation_id=chat_args.conversation_id),
         return_messages=True,

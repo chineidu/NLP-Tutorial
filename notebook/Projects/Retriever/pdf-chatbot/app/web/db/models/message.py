@@ -1,6 +1,9 @@
 import uuid
-from app.web.db import db
+
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
+
+from app.web.db import db
+
 from .base import BaseModel
 
 
@@ -13,15 +16,14 @@ class Message(BaseModel):
     conversation_id: str = db.Column(db.String(), db.ForeignKey("conversation.id"), nullable=False)
     conversation = db.relationship("Conversation", back_populates="messages")
 
-    def as_dict(self):
+    def as_dict(self) -> dict[str, Any]:
         return {"id": self.id, "role": self.role, "content": self.content}
 
     def as_lc_message(self) -> HumanMessage | AIMessage | SystemMessage:
         if self.role == "human":
             return HumanMessage(content=self.content)
-        elif self.role == "ai":
+        if self.role == "ai":
             return AIMessage(content=self.content)
-        elif self.role == "system":
+        if self.role == "system":
             return SystemMessage(content=self.content)
-        else:
-            raise Exception(f"Unknown message role: {self.role}")
+        raise Exception(f"Unknown message role: {self.role}")
