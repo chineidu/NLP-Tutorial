@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import BadRequest
 
@@ -11,7 +13,7 @@ bp = Blueprint("score", __name__, url_prefix="/api/scores")
 @bp.route("/", methods=["POST"])
 @login_required
 @load_model(Conversation, lambda r: r.args.get("conversation_id"))
-def update_score(conversation):
+def update_score(conversation) -> Any:
     score = request.json.get("score")
     if not isinstance(score, (int, float)) or score < -1 or score > 1:
         raise BadRequest("Score must be a float between -1 and 1")
@@ -29,7 +31,7 @@ def update_score(conversation):
 
 @bp.route("/", methods=["GET"])
 @login_required
-def list_scores():
+def list_scores() -> Any:
     scores = get_scores()
 
     return jsonify(scores)

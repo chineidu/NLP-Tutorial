@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import Blueprint, Response, g, jsonify, request, stream_with_context
 
 from app.chat import ChatArgs, build_chat
@@ -10,14 +12,14 @@ bp = Blueprint("conversation", __name__, url_prefix="/api/conversations")
 @bp.route("/", methods=["GET"])
 @login_required
 @load_model(Pdf, lambda r: r.args.get("pdf_id"))
-def list_conversations(pdf):
+def list_conversations(pdf) -> Any:
     return [c.as_dict() for c in pdf.conversations]
 
 
 @bp.route("/", methods=["POST"])
 @login_required
 @load_model(Pdf, lambda r: r.args.get("pdf_id"))
-def create_conversation(pdf):
+def create_conversation(pdf) -> Any:
     conversation = Conversation.create(user_id=g.user.id, pdf_id=pdf.id)
 
     return conversation.as_dict()
@@ -26,7 +28,7 @@ def create_conversation(pdf):
 @bp.route("/<string:conversation_id>/messages", methods=["POST"])
 @login_required
 @load_model(Conversation)
-def create_message(conversation):
+def create_message(conversation) -> Any:
     input = request.json.get("input")
     streaming = request.args.get("stream", False)
 
@@ -50,5 +52,5 @@ def create_message(conversation):
 
     if streaming:
         return Response(stream_with_context(chat.stream(input)), mimetype="text/event-stream")
-    else:
-        return jsonify({"role": "assistant", "content": chat.run(input)})
+
+    return jsonify({"role": "assistant", "content": chat.run(input)})
