@@ -123,6 +123,7 @@ class MultiHeadAttention(nn.Module):
         # Reshape and transpose the data
         # Split the matrix by adding `num_heads` dimension and unroll the last dimension
         # i.e. [b, num_tokens, d_out] -> [b, num_tokens, num_heads, head_dim]
+        # and transpose the 2nd and 3rd dimensions
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
         keys = keys.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
         values = values.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
@@ -130,15 +131,18 @@ class MultiHeadAttention(nn.Module):
         attn_scores: Tensor = torch.matmul(queries, keys.transpose(-2, -1))
         # Truncate mask and apply to attention scores
         mask_bool: Tensor = self.mask.bool()[:num_tokens, :num_tokens]
+        # Inplace operation: Replace the 1s with -inf
         attn_scores.masked_fill_(mask_bool, -torch.inf)
 
         # Compute the attention weights
         attn_weights: Tensor = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
 
+        # Transpose to the initial shape:
+        # [b, num_heads, num_tokens, head_dim] -> [b, num_tokens, num_heads, head_dim]
         context_vector: Tensor = torch.matmul(attn_weights, values).transpose(1, 2)
 
-        # Combine the heads
+        # Combine the heads: Reshape back to [b, num_tokens, d_out]
         context_vector = context_vector.contiguous().view(b, num_tokens, self.d_out)
         # Apply optional linear output projection
         context_vector = self.out_proj(context_vector)
