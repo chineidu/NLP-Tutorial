@@ -130,6 +130,7 @@ dmypy.json
 
 # Cutom
 /models
+**/gpt2/
 notepad.py
 *.env
 ai_assistant.py

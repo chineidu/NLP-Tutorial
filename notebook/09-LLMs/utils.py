@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy as np
 import tiktoken
 import torch
 from torch import Tensor, nn
@@ -147,3 +148,250 @@ class MultiHeadAttention(nn.Module):
         # Apply optional linear output projection
         context_vector = self.out_proj(context_vector)
         return context_vector
+
+
+class GELU(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: Tensor) -> Tensor:
+        gelu: Tensor = (
+            0.5
+            * x
+            * (
+                1
+                + torch.tanh(
+                    torch.sqrt(torch.tensor(2.0 / torch.pi)) * (x + 0.044715 * torch.pow(x, 3))
+                )
+            )
+        )
+        return gelu
+
+
+class FeedForward(nn.Module):
+    """Applies a feed-forward neural network to the input tensor `x`. The feed-forward network
+    consists of two linear layers with a GELU activation in between. The first linear layer
+    expands the input dimension by a factor of 4, and the second linear layer projects the result
+    back to the original input dimension.
+
+    Args:
+        x (torch.Tensor): The input tensor to be passed through the feed-forward network.
+
+    Returns:
+        torch.Tensor: The output tensor after passing through the feed-forward network.
+    """
+
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        super().__init__()
+
+        self.layers = nn.Sequential(
+            nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"]),
+            GELU(),
+            nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"]),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.layers(x)
+
+
+class LayerNorm(nn.Module):
+    def __init__(self, embed_dim: int) -> None:
+        super().__init__()
+
+        self.eps: float = 1e-5  # Prevents zero division
+
+        # Trainable params that's automatically adjusted by the LLM during
+        # training to improve model performance
+        self.scale = nn.Parameter(torch.ones(embed_dim))
+        self.shift = nn.Parameter(torch.zeros(embed_dim))
+
+    def forward(self, x: Tensor) -> Tensor:
+        mean = x.mean(dim=-1, keepdim=True)
+        std = x.std(dim=-1, unbiased=False, keepdim=True)
+        norm_x: Tensor = (x - mean) / (std + self.eps)
+
+        return (self.scale * norm_x) + self.shift
+
+
+# === Variable names are slighly different from the notebook version ===
+class TransformerBlock(nn.Module):
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        super().__init__()
+
+        self.att = MultiHeadAttention(
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
+            context_length=cfg["context_length"],
+            num_heads=cfg["n_heads"],
+            dropout=cfg["drop_rate"],
+            qkv_bias=cfg["qkv_bias"],
+        )
+        self.ff = FeedForward(cfg)
+        self.norm1 = LayerNorm(cfg["emb_dim"])
+        self.norm2 = LayerNorm(cfg["emb_dim"])
+        self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
+
+    def forward(self, x: Tensor) -> Tensor:
+        shortcut: Tensor = x
+        x = self.norm1(x)
+        x = self.att(x)
+        x = self.dropout(x)
+        # Add the original input to the output.
+        x = x + shortcut
+
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        # Apply shortcut connection.
+        x = x + shortcut
+
+        return x
+
+
+# === Variable names are slighly different from the notebook version ===
+class GPTModel(nn.Module):
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        super().__init__()
+
+        # Lookup tables
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        self.drop_emb = nn.Dropout(cfg["drop_rate"])
+        self.trf_blocks = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
+
+        self.final_norm = LayerNorm(cfg["emb_dim"])
+        self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        batch_size, seq_len = x.shape
+        tok_embeds: Tensor = self.tok_emb(x)
+        pos_embeds: Tensor = self.pos_emb(torch.arange(seq_len, device=x.device))
+        # Add token and positional embeddings to get input embeddings
+        x = tok_embeds + pos_embeds
+        x = self.drop_emb(x)
+        x = self.trf_blocks(x)
+        x = self.final_norm(x)
+        logits: Tensor = self.out_head(x)
+
+        return logits
+
+
+def generate_text_simple(
+    model: nn.Module, input_idx: Tensor, max_new_tokens: int, context_length: int
+) -> Tensor:
+    """Generate text using a language model by iteratively predicting the next token.
+
+    Args:
+        model (nn.Module): The language model used for generating text.
+        input_idx (Tensor): The input tensor containing the initial context tokens.
+        max_new_tokens (int): The maximum number of new tokens to generate.
+        context_length (int): The maximum length of the context that the model can handle.
+
+    Returns:
+        Tensor: The tensor containing the generated sequence of tokens.
+    """
+    for _ in range(max_new_tokens):
+        # Crop the context if it exceeds the maximum length supported by the LLM.
+        # i.e. if the LLM supports only 5 tokens and the context is 10 tokens long, reduce
+        # it to 5 tokens.
+        idx_cond: Tensor = input_idx[:, -context_length:]
+
+        with torch.no_grad():
+            logits: Tensor = model(idx_cond)
+
+        # Get the last token from the sequence
+        logits = logits[:, -1, :]
+        probas: Tensor = torch.softmax(logits, dim=-1)
+        idx_next: Tensor = torch.argmax(probas, dim=-1, keepdim=True)
+        # Append the last token to the context
+        input_idx = torch.cat([input_idx, idx_next], dim=1)
+
+    return input_idx
+
+
+def assign(left: Tensor, right: Tensor) -> nn.Parameter:
+    """Assigns the values from the right tensor to the left tensor, ensuring that the
+    shapes match.
+
+    Args:
+        left (torch.Tensor): The tensor to assign the values to.
+        right (torch.Tensor): The values to assign to the left tensor.
+
+    Returns:
+        nn.Parameter: The left tensor with the assigned values.
+
+    Raises:
+        ValueError: If the shapes of the left and right tensors do not match.
+    """
+    if left.shape != right.shape:
+        raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
+    return nn.Parameter(torch.tensor(right))
+
+
+def load_weights_into_gpt(gpt: nn.Module, params: dict[str, Any]) -> None:
+    """Assigns the pre-trained weights from the provided parameters to the specified
+    layers of the GPT model.
+
+    Args:
+        gpt (torch.nn.Module): The GPT model to load the weights into.
+        params (dict): A dictionary containing the pre-trained parameter values.
+
+    Raises:
+        ValueError: If the shapes of the tensors to be assigned do not match.
+    """
+    gpt.pos_emb.weight = assign(gpt.pos_emb.weight, params["wpe"])
+    gpt.tok_emb.weight = assign(gpt.tok_emb.weight, params["wte"])
+
+    for b in range(len(params["blocks"])):
+        q_w, k_w, v_w = np.split((params["blocks"][b]["attn"]["c_attn"])["w"], 3, axis=-1)
+        gpt.trf_blocks[b].att.W_query.weight = assign(gpt.trf_blocks[b].att.W_query.weight, q_w.T)
+        gpt.trf_blocks[b].att.W_key.weight = assign(gpt.trf_blocks[b].att.W_key.weight, k_w.T)
+        gpt.trf_blocks[b].att.W_value.weight = assign(gpt.trf_blocks[b].att.W_value.weight, v_w.T)
+
+        q_b, k_b, v_b = np.split((params["blocks"][b]["attn"]["c_attn"])["b"], 3, axis=-1)
+        gpt.trf_blocks[b].att.W_query.bias = assign(gpt.trf_blocks[b].att.W_query.bias, q_b)
+        gpt.trf_blocks[b].att.W_key.bias = assign(gpt.trf_blocks[b].att.W_key.bias, k_b)
+        gpt.trf_blocks[b].att.W_value.bias = assign(gpt.trf_blocks[b].att.W_value.bias, v_b)
+
+        gpt.trf_blocks[b].att.out_proj.weight = assign(
+            gpt.trf_blocks[b].att.out_proj.weight,
+            params["blocks"][b]["attn"]["c_proj"]["w"].T,
+        )
+        gpt.trf_blocks[b].att.out_proj.bias = assign(
+            gpt.trf_blocks[b].att.out_proj.bias,
+            params["blocks"][b]["attn"]["c_proj"]["b"],
+        )
+
+        gpt.trf_blocks[b].ff.layers[0].weight = assign(
+            gpt.trf_blocks[b].ff.layers[0].weight,
+            params["blocks"][b]["mlp"]["c_fc"]["w"].T,
+        )
+        gpt.trf_blocks[b].ff.layers[0].bias = assign(
+            gpt.trf_blocks[b].ff.layers[0].bias, params["blocks"][b]["mlp"]["c_fc"]["b"]
+        )
+        gpt.trf_blocks[b].ff.layers[2].weight = assign(
+            gpt.trf_blocks[b].ff.layers[2].weight,
+            params["blocks"][b]["mlp"]["c_proj"]["w"].T,
+        )
+        gpt.trf_blocks[b].ff.layers[2].bias = assign(
+            gpt.trf_blocks[b].ff.layers[2].bias,
+            params["blocks"][b]["mlp"]["c_proj"]["b"],
+        )
+
+        gpt.trf_blocks[b].norm1.scale = assign(
+            gpt.trf_blocks[b].norm1.scale, params["blocks"][b]["ln_1"]["g"]
+        )
+        gpt.trf_blocks[b].norm1.shift = assign(
+            gpt.trf_blocks[b].norm1.shift, params["blocks"][b]["ln_1"]["b"]
+        )
+        gpt.trf_blocks[b].norm2.scale = assign(
+            gpt.trf_blocks[b].norm2.scale, params["blocks"][b]["ln_2"]["g"]
+        )
+        gpt.trf_blocks[b].norm2.shift = assign(
+            gpt.trf_blocks[b].norm2.shift, params["blocks"][b]["ln_2"]["b"]
+        )
+
+    gpt.final_norm.scale = assign(gpt.final_norm.scale, params["g"])
+    gpt.final_norm.shift = assign(gpt.final_norm.shift, params["b"])
+    gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
