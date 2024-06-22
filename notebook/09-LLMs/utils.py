@@ -235,7 +235,7 @@ class TransformerBlock(nn.Module):
         shortcut: Tensor = x
         x = self.norm1(x)
         x = self.att(x)
-        x = self.dropout(x)
+        x = self.drop_shortcut(x)
         # Add the original input to the output.
         x = x + shortcut
 
@@ -275,39 +275,6 @@ class GPTModel(nn.Module):
         logits: Tensor = self.out_head(x)
 
         return logits
-
-
-def generate_text_simple(
-    model: nn.Module, input_idx: Tensor, max_new_tokens: int, context_length: int
-) -> Tensor:
-    """Generate text using a language model by iteratively predicting the next token.
-
-    Args:
-        model (nn.Module): The language model used for generating text.
-        input_idx (Tensor): The input tensor containing the initial context tokens.
-        max_new_tokens (int): The maximum number of new tokens to generate.
-        context_length (int): The maximum length of the context that the model can handle.
-
-    Returns:
-        Tensor: The tensor containing the generated sequence of tokens.
-    """
-    for _ in range(max_new_tokens):
-        # Crop the context if it exceeds the maximum length supported by the LLM.
-        # i.e. if the LLM supports only 5 tokens and the context is 10 tokens long, reduce
-        # it to 5 tokens.
-        idx_cond: Tensor = input_idx[:, -context_length:]
-
-        with torch.no_grad():
-            logits: Tensor = model(idx_cond)
-
-        # Get the last token from the sequence
-        logits = logits[:, -1, :]
-        probas: Tensor = torch.softmax(logits, dim=-1)
-        idx_next: Tensor = torch.argmax(probas, dim=-1, keepdim=True)
-        # Append the last token to the context
-        input_idx = torch.cat([input_idx, idx_next], dim=1)
-
-    return input_idx
 
 
 def assign(left: Tensor, right: Tensor) -> nn.Parameter:
