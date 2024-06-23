@@ -142,4 +142,4 @@ qdrant_storage
 data
 temp
 data_prep
-006-spend-classifier.ipynb
+**/*spend*.ipynb
