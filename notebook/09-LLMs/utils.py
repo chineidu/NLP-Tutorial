@@ -1,3 +1,5 @@
+import os
+import sys
 from typing import Any
 
 import numpy as np
@@ -5,6 +7,32 @@ import tiktoken
 import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, Dataset
+
+
+def go_up_from_current_directory(*, go_up: int = 1) -> None:
+    """This is used to up a number of directories.
+
+    Args:
+    -----
+    go_up (int, default=1): This indicates the number of times to go back up
+    from the current directory.
+
+    Returns:
+    --------
+    None
+    """
+
+    CONST: str = "../"
+    NUM: str = CONST * go_up
+
+    # Goto the previous directory
+    prev_directory = os.path.join(os.path.dirname(__name__), NUM)
+    # Get the 'absolute path' of the previous directory
+    abs_path_prev_directory = os.path.abspath(prev_directory)
+
+    # Add the path to the System paths
+    sys.path.insert(0, abs_path_prev_directory)
+    print(abs_path_prev_directory)  # noqa
 
 
 class GPTDataset(Dataset):
