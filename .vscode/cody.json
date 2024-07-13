@@ -1,9 +1,0 @@
-{
-    "generate-docs": {
-        "prompt": "Document this code using type annotations for the input and the return values. The variables within the function/class should also be annotated.",
-        "context": {
-            "selection": true
-        },
-        "mode": "ask"
-    }
-}
