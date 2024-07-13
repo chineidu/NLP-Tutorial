@@ -139,7 +139,7 @@ notebook/06_Transformers/my_data
 *.parquet
 notebook/06_Transformers/bert-finetuned-sequence-classification
 qdrant_storage
-data
 temp
 data_prep
 **/*spend*.ipynb
+**/data
