@@ -76,18 +76,34 @@ def train_model_with_cross_validation(
     return estimator, scores, mean_accuracy, std_accuracy
 
 
-def plot_comfusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, title: str) -> None:
-    # Calculate confusion matrices
-    cm_arr: np.ndarray = confusion_matrix(y_true, y_pred)
+def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, labels: list[str]) -> None:
+    """
+    Create and plot a confusion matrix.
 
-    # Plot confusion matrices
-    plt.figure(figsize=(6, 6))
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels, shape (n_samples,)
+    y_pred : np.ndarray
+        Predicted labels, shape (n_samples,)
+    labels : list[str]
+        list of label names
 
-    sns.heatmap(cm_arr, annot=True, fmt="d", cmap="Blues")
-    plt.title(title)
-    plt.xlabel("Predicted")
+    Returns
+    -------
+    None
+    """
+    # Create the confusion matrix.
+    cm: np.ndarray = confusion_matrix(y_true, y_pred)
+
+    # Plot confusion_matrix.
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    sns.heatmap(cm, annot=True, cmap="Set3", fmt="d", xticklabels=labels, yticklabels=labels)
+    ax.set_yticklabels(labels, rotation=0)
     plt.ylabel("Actual")
-
+    plt.xlabel("Predicted")
+    plt.title("Confusion Matrix")
     plt.tight_layout()
     plt.show()
 
