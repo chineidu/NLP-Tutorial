@@ -76,7 +76,9 @@ def train_model_with_cross_validation(
     return estimator, scores, mean_accuracy, std_accuracy
 
 
-def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, labels: list[str]) -> None:
+def plot_confusion_matrix(
+    y_true: np.ndarray, y_pred: np.ndarray, labels: list[str], cmap: str = "Set3"
+) -> None:
     """
     Create and plot a confusion matrix.
 
@@ -87,19 +89,28 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, labels: list[s
     y_pred : np.ndarray
         Predicted labels, shape (n_samples,)
     labels : list[str]
-        list of label names
+        List of label names
+    cmap : str, optional
+        Colormap for the heatmap, by default "Set3"
 
     Returns
     -------
     None
+
+    Notes
+    -----
+    This function creates a confusion matrix from the true and predicted labels,
+    and then plots it as a heatmap using seaborn.
     """
     # Create the confusion matrix.
     cm: np.ndarray = confusion_matrix(y_true, y_pred)
 
     # Plot confusion_matrix.
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig: plt.Figure
+    ax: plt.Axes
+    fig, ax = plt.subplots(figsize=(8, 5))
 
-    sns.heatmap(cm, annot=True, cmap="Set3", fmt="d", xticklabels=labels, yticklabels=labels)
+    sns.heatmap(cm, annot=True, cmap=cmap, fmt="d", xticklabels=labels, yticklabels=labels)
     ax.set_yticklabels(labels, rotation=0)
     plt.ylabel("Actual")
     plt.xlabel("Predicted")
@@ -132,6 +143,7 @@ def calculate_precision_recall_curves(
     -------
     tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float]
         Precision and recall values for train and test data, and their average precision scores
+        (precision_train, recall_train, precision_test, recall_test, ap_train, ap_test)
     """
     # Calculate precision-recall curves
     precision_train, recall_train, _ = precision_recall_curve(train_class, y_proba_train)
@@ -254,7 +266,7 @@ def plot_roc_curves(
     -------
     None
     """
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(6, 6))
     plt.plot(
         fpr_train,
         tpr_train,
@@ -320,6 +332,7 @@ def plot_learning_curve(
     test_mean: np.ndarray = np.mean(test_scores, axis=1)
     test_std: np.ndarray = np.std(test_scores, axis=1)
 
+    plt.figure(figsize=(6, 6))
     plt.plot(
         train_sizes,
         train_mean,
