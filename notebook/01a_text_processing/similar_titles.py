@@ -186,7 +186,7 @@ if __name__ == "__main__":
     print("[INFO]: Computing similarity matrix")  # noqa
     chunk_size: int = int(df.shape[0] / 3)
     similarity_df: pl.DataFrame = compute_similarity_matrix_fast(
-        unique_titles=uniq_titles, threshold=0.9, chunk_size=chunk_size, num_perm=256
+        unique_titles=uniq_titles, threshold=0.8, chunk_size=chunk_size, num_perm=256
     )
     similarity_df.write_csv("similar_titles.csv")
-    print("[INFO]: Saved to similar_titles.csv")  # noqa
+    print("[INFO]: Saving done")  # noqa
