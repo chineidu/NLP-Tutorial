@@ -144,3 +144,4 @@ data_prep
 **/*spend*.ipynb
 **/data
 **/.vscode
+**/mlruns
