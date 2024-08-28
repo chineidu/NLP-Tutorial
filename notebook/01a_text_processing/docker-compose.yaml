@@ -1,0 +1,20 @@
+# ===========================
+# docker-compose.yaml
+# ===========================
+version: "3.8"
+
+services:
+  doccano: # 1st service
+    image: doccano/doccano
+    container_name: doccano-app  # Also used as hostname
+    ports:  # Exposed ports
+      - 8000:8000
+    env_file:  # Location of file(s) containing the env vars. Only accessed by the container.
+      - ./envs/.env
+    volumes:  # Persist the data volume
+      - doccano-db:/data
+
+
+# Named volumes ONLY!
+volumes:
+  doccano-db:

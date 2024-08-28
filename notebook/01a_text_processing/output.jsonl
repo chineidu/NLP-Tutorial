@@ -1,0 +1,2 @@
+{"tokens": ["The", "meeting", "will", "be", "held", "in", "New", "York", "City", "next", "week."], "iob_tags": ["O", "O", "O", "O", "O", "O", "B-Location", "I-Location", "I-Location", "O", "O"]}
+{"tokens": ["John", "Smith", "was", "born", "on", "December", "25,", "1990."], "iob_tags": ["B-Person", "I-Person", "O", "O", "O", "B-Date", "I-Date", "I-Date"]}
