@@ -146,4 +146,6 @@ data_prep
 **/.vscode
 **/mlruns
 **/playground*.py
+**/playground*.ipynb
 **/client*.py
+**/.env
