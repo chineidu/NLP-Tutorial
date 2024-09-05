@@ -1,5 +1,6 @@
 import os
 from collections import Counter
+from dataclasses import dataclass, field
 from itertools import chain
 from typing import Any, Callable, Iterator
 
@@ -159,9 +160,6 @@ def save_tokenized_corpus(tok_corpus: list[list[str]], filepath: str, separator:
         print(f"Saved tokenized corpus to {filepath}")  # noqa: T201
         return
     print(f"File {filepath!r} already exists. Skipping save operation.")  # noqa: T201
-
-
-from dataclasses import dataclass, field
 
 
 @dataclass
