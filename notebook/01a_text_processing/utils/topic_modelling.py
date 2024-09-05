@@ -1,10 +1,9 @@
-from collections.abc import Iterable
-from typing import List, Tuple
-
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel, Phrases
 from rich.console import Console
 from rich.theme import Theme
+
+from utils.utils import MyCorpus
 
 custom_theme = Theme({"info": "#76FF7B", "warning": "#FBDDFE", "error": "#FF0000"})
 console = Console(theme=custom_theme)
@@ -22,7 +21,7 @@ class LdaTopicExtractor:
 
     Attributes
     ----------
-    corpus : Iterable[List[str]]
+    corpus : MyCorpus
         The input corpus for topic modeling.
     num_topics : int
         The number of topics to extract.
@@ -33,11 +32,23 @@ class LdaTopicExtractor:
         distribution of a corpus.
     passes : int
         Number of passes through the corpus during training.
+
+    Example
+    -------
+    >>> corpus: list[list[str]] = [
+    ...     ["this", "is", "the", "first", "document"],
+    ...     ["this", "is", "the", "second", "document"],
+    ...     ["this", "is", "the", "third", "document"],
+    ... ]
+    >>> lda_extractor = LdaTopicExtractor(corpus, num_topics=2)
+    >>> topics = lda_extractor.extract_topics()
+    >>> lda_extractor.print_topics(topics)
+    >>> coherence, perplexity = lda_extractor.evaluate_lda()
     """
 
     def __init__(
         self,
-        corpus: Iterable[List[str]],
+        corpus: "MyCorpus",
         num_topics: int = 10,
         chunksize: int = 2_000,
         iterations: int = 400,
@@ -48,7 +59,7 @@ class LdaTopicExtractor:
 
         Parameters
         ----------
-        corpus : Iterable[List[str]]
+        corpus : MyCorpus
             The input corpus for topic modeling.
         num_topics : int, optional
             The number of topics to extract, by default 10.
@@ -60,11 +71,12 @@ class LdaTopicExtractor:
         passes : int, optional
             Number of passes through the corpus during training, by default 30.
         """
-        self.corpus: Iterable[List[str]] = corpus
+        self.corpus: "MyCorpus" = corpus
         self.num_topics: int = num_topics
         self.chunksize: int = chunksize
         self.iterations: int = iterations
         self.passes: int = passes
+        self.lda_model: LdaModel | None = None
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(n_corpus={len(self.corpus):,})"  # type: ignore
@@ -80,36 +92,45 @@ class LdaTopicExtractor:
         """
         return Phrases(sentences=self.corpus, min_count=20)
 
-    def add_bigrams(self) -> Iterable[List[str]]:
+    def add_bigrams(self) -> "MyCorpus":  # type: ignore
         """
         Add bigrams to the corpus.
 
         Returns
         -------
-        Iterable[List[str]]
+        MyCorpus
             The corpus with added bigrams.
         """
         bigram: Phrases = self._create_bigrams()
-        for doc in self.corpus:
-            yield (doc + [token for token in bigram[doc] if "_" in token])
 
-    def create_bow(self) -> Tuple[Dictionary, List[List[Tuple[int, int]]]]:
+        try:
+            # Reset the iterator
+            self.corpus.index = 0
+        except AttributeError:
+            console.print("Failed to reset iterator index")
+            pass
+
+        for doc in self.corpus:
+            combined = doc + [token for token in bigram[doc] if "_" in token]
+            yield combined
+
+    def create_bow(self) -> tuple[Dictionary, list[list[tuple[int, int]]]]:
         """
         Create a Bag of Words (BoW) representation of the corpus.
 
         Returns
         -------
-        Tuple[Dictionary, List[List[Tuple[int, int]]]]
+        tuple[Dictionary, list[list[tuple[int, int]]]]
             A tuple containing the dictionary and the BoW corpus.
         """
-        self.corpus_wth_bigrams_: List[List[str]] = list(self.add_bigrams())
+        self.corpus_wth_bigrams_: list[list[str]] = list(self.add_bigrams())
         dictionary_: Dictionary = Dictionary(self.corpus_wth_bigrams_)
-        corpus_bow: List[List[Tuple[int, int]]] = [
+        corpus_bow: list[list[tuple[int, int]]] = [
             dictionary_.doc2bow(doc) for doc in self.corpus_wth_bigrams_
         ]
         return dictionary_, corpus_bow
 
-    def train_lda(self) -> LdaModel:
+    def train_model(self) -> LdaModel:
         """
         Train the LDA model.
 
@@ -119,64 +140,71 @@ class LdaTopicExtractor:
             The trained LDA model.
         """
         dictionary_: Dictionary
-        corpus_bow: List[List[Tuple[int, int]]]
+        corpus_bow: list[list[tuple[int, int]]]
         dictionary_, corpus_bow = self.create_bow()
-        self.lda_model: LdaModel = LdaModel(
-            corpus=corpus_bow,
-            id2word=dictionary_,
-            chunksize=self.chunksize,
-            alpha="auto",
-            eta="auto",
-            iterations=self.iterations,
-            num_topics=self.num_topics,
-            passes=self.passes,
-            eval_every=None,
-        )
-        console.print("LDA model trained.", style="info")
+        try:
+            self.lda_model = LdaModel(
+                corpus=corpus_bow,
+                id2word=dictionary_,
+                chunksize=self.chunksize,
+                alpha="auto",
+                eta="auto",
+                iterations=self.iterations,
+                num_topics=self.num_topics,
+                passes=self.passes,
+                eval_every=None,
+            )
+            console.print("LDA model trained.", style="info")
+        except Exception as e:
+            console.print(e)
+
         return self.lda_model
 
-    def extract_topics(self) -> List[Tuple[List[Tuple[str, float]], float]]:
+    def extract_topics(self) -> list[tuple[list[tuple[str, float]], float]]:
         """
         Extract topics from the trained LDA model.
 
         Returns
         -------
-        List[Tuple[List[Tuple[str, float]], float]]
+        list[tuple[list[tuple[str, float]], float]]
             A list of tuples containing the top topics and their coherence scores.
         """
-        corpus_bow: List[List[Tuple[int, int]]]
+        if self.lda_model is None:
+            self.train_model()
+
+        corpus_bow: list[list[tuple[int, int]]]
         _, corpus_bow = self.create_bow()
-        self.top_topics: List[Tuple[List[Tuple[str, float]], float]] = self.lda_model.top_topics(
-            corpus=corpus_bow, topn=self.num_topics
+        self.top_topics: list[tuple[list[tuple[str, float]], float]] = self.lda_model.top_topics(  # type: ignore
+            corpus=corpus_bow, topn=self.num_topics + 10
         )
         avg_topic_coherence: float = sum([t[1] for t in self.top_topics]) / self.num_topics
         console.print(f"Average topic coherence: {avg_topic_coherence:.4f}\n", style="info")
         return self.top_topics
 
     @staticmethod
-    def print_topics(top_topics: List[Tuple[List[Tuple[str, float]], float]]) -> None:
+    def print_topics(top_topics: list[tuple[list[tuple[str, float]], float]]) -> None:
         """
         Print the top topics.
 
         Parameters
         ----------
-        top_topics : List[Tuple[List[Tuple[str, float]], float]]
+        top_topics : list[tuple[list[tuple[str, float]], float]]
             A list of tuples containing the top topics and their coherence scores.
         """
         console.print(top_topics, style="info")
 
     @staticmethod
     def _compute_topic_coherence(
-        model: LdaModel, corpus_with_bigrams: List[List[str]], dictionary: Dictionary
+        model: LdaModel, corpus_with_bigrams: list[list[str]], dictionary: Dictionary
     ) -> float:
         """
-        Compute the topic coherence score.
+        Compute the topic coherence score. Higher is better.
 
         Parameters
         ----------
         model : LdaModel
             The trained LDA model.
-        corpus_with_bigrams : List[List[str]]
+        corpus_with_bigrams : list[list[str]]
             The corpus with bigrams.
         dictionary : Dictionary
             The dictionary used for creating the BoW corpus.
@@ -196,15 +224,15 @@ class LdaTopicExtractor:
         return coherence_score
 
     @staticmethod
-    def _compute_perplexity(model: LdaModel, corpus_bow: List[List[Tuple[int, int]]]) -> float:
+    def _compute_perplexity(model: LdaModel, corpus_bow: list[list[tuple[int, int]]]) -> float:
         """
-        Compute the perplexity of the model.
+        Compute the perplexity of the model. Lower is better
 
         Parameters
         ----------
         model : LdaModel
             The trained LDA model.
-        corpus_bow : List[List[Tuple[int, int]]]
+        corpus_bow : list[list[tuple[int, int]]]
             The BoW representation of the corpus.
 
         Returns
@@ -215,23 +243,25 @@ class LdaTopicExtractor:
         perplexity: float = model.log_perplexity(corpus_bow)
         return perplexity
 
-    def evaluate_lda(self) -> Tuple[float, float]:
+    def evaluate_lda(self) -> tuple[float, float]:
         """
         Evaluate the LDA model by computing coherence score and perplexity.
 
         Returns
         -------
-        Tuple[float, float]
+        tuple[float, float]
             A tuple containing the coherence score and perplexity.
         """
+        if self.lda_model is None:
+            self.train_model()
+
         dictionary_: Dictionary
-        corpus_bow: List[List[Tuple[int, int]]]
+        corpus_bow: list[list[tuple[int, int]]]
         dictionary_, corpus_bow = self.create_bow()
-        model: LdaModel = self.train_lda()
         coherence_score: float = self._compute_topic_coherence(
-            model, self.corpus_wth_bigrams_, dictionary_
+            self.lda_model, self.corpus_wth_bigrams_, dictionary_
         )
-        perplexity: float = self._compute_perplexity(model, corpus_bow)
+        perplexity: float = self._compute_perplexity(self.lda_model, corpus_bow)
         console.print(
             f"N_topics: {self.num_topics} | Coherence score: {coherence_score:.4f} "
             f"| Perplexity: {perplexity:.4f}",

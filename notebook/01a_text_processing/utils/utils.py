@@ -1,7 +1,7 @@
 import os
 from collections import Counter
 from itertools import chain
-from typing import Callable, Iterator
+from typing import Any, Callable, Iterator
 
 import gensim
 import spacy
@@ -106,7 +106,7 @@ def spacy_preprocess(doc: str, custom_stopwords: set[str] | None = None) -> list
     return [word for word in spacy_tokenizer(doc) if word not in custom_stopwords]  # type: ignore
 
 
-def infer_stopwords(docs: list[list[str]], threshold_percentage: float = 0.5) -> set[str]:
+def infer_stopwords(docs: list[list[str]], threshold_percentage: float = 0.4) -> set[str]:
     """
     Infer stopwords from a list of documents based on a frequency threshold.
 
@@ -116,7 +116,7 @@ def infer_stopwords(docs: list[list[str]], threshold_percentage: float = 0.5) ->
         A list of documents, where each document is represented as a list of tokens.
     threshold_percentage : float, optional
         The percentage threshold for considering a word as a stopword.
-        Default is 0.5 (50%).
+        Default is 0.4 (40%).
 
     Returns
     -------
@@ -161,47 +161,124 @@ def save_tokenized_corpus(tok_corpus: list[list[str]], filepath: str, separator:
     print(f"File {filepath!r} already exists. Skipping save operation.")  # noqa: T201
 
 
+from dataclasses import dataclass, field
+
+
+@dataclass
 class MyCorpus:
     """
-    A class to represent a corpus of text data.
-
-    Parameters
-    ----------
-    filepath : str
-        The path to the file containing the corpus data.
-    separator : str, optional
-        The separator used in the file to separate tokens (default is ",").
+    A class representing a corpus of text data.
 
     Attributes
     ----------
-    filepath : str
-        The path to the file containing the corpus data.
+    input_data : list[Any] | None
+        Input data as a list of any type, default is None.
+    filepath : str | None
+        Path to the file containing the corpus data, default is None.
     separator : str
-        The separator used in the file to separate tokens.
+        Separator used in the file to split the data, default is ",".
+    data : list[list[str]]
+        The corpus data stored as a list of lists of strings.
+    index : int
+        Current index for iteration, default is 0.
+
+    Methods
+    -------
+    load_data_from_file() -> None
+        Load the corpus data from the file.
     """
 
-    def __init__(self, filepath: str, separator: str = ",") -> None:
-        self.filepath: str = filepath
-        self.separator: str = separator
+    input_data: list[Any] | None = None
+    filepath: str | None = None
+    separator: str = ","
+    data: list[list[str]] = field(default_factory=list, init=False)
+    index: int = field(default=0, init=False)
+
+    def __post_init__(self) -> None:
+        """
+        Initialize the corpus data after object creation.
+
+        Raises
+        ------
+        ValueError
+            If neither filepath nor input_data is provided.
+        """
+        if self.filepath is not None:
+            self.load_data_from_file()
+        elif self.input_data is not None:
+            self.data = self.input_data
+        elif self.input_data is None and self.filepath is None:
+            raise ValueError("Please provide either a filepath or input_data")
+
+    def load_data_from_file(self) -> None:
+        """
+        Load the corpus data from the file.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the specified file does not exist.
+        """
+        if not os.path.exists(self.filepath):  # type: ignore
+            raise FileNotFoundError(f"The file {self.filepath} does not exist.")
+
+        with open(self.filepath, "r") as file:  # type: ignore
+            self.data = [line.strip().split(self.separator) for line in file]
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(filepath={self.filepath!r})"
+        """
+        Return a string representation of the MyCorpus object.
+
+        Returns
+        -------
+        str
+            A string representation of the MyCorpus object.
+        """
+        source: str = f"filepath={self.filepath!r}" if self.filepath else "in-memory data"
+        return f"{self.__class__.__name__}({source}, data={len(self.data):,} items)"
 
     def __len__(self) -> int:
-        return sum(1 for _ in open(self.filepath, "r"))  # noqa: SIM115
+        """
+        Return the number of items in the corpus.
+
+        Returns
+        -------
+        int
+            The number of items in the corpus.
+        """
+        return len(self.data)
 
     def __iter__(self) -> Iterator[list[str]]:
         """
-        Iterate over the corpus, yielding tokenized lines.
+        Return an iterator for the corpus.
 
-        Yields
-        ------
-        list[str]
-            A list of tokens from each line in the corpus.
+        Returns
+        -------
+        Iterator[list[str]]
+            An iterator for the corpus.
         """
-        for line in open(self.filepath, "r"):  # noqa: SIM115
-            # Corpus has already been converted to lowercase
-            yield line.strip().split(self.separator)
+        self.index = 0
+        return self
+
+    def __next__(self) -> list[str]:
+        """
+        Return the next item in the corpus.
+
+        Returns
+        -------
+        list[str]
+            The next item in the corpus.
+
+        Raises
+        ------
+        StopIteration
+            If there are no more items in the corpus.
+        """
+        if self.index >= len(self.data):
+            raise StopIteration
+        value: list[str] = self.data[self.index]
+        self.index += 1
+        return value
 
 
 def stream_corpus(corpus_iterable: MyCorpus | list[list[str]], size: int = 100) -> list[list[str]]:
