@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,40 +77,46 @@ def train_model_with_cross_validation(
 
 
 def plot_confusion_matrix(
-    y_true: np.ndarray, y_pred: np.ndarray, labels: list[str], cmap: str = "Set3"
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    labels: list[str],
+    normalize: Literal["true", "pred", "all"] | None = "true",
+    cmap: str = "Set3",
 ) -> None:
     """
-    Create and plot a confusion matrix.
+    Plot a confusion matrix.
 
     Parameters
     ----------
     y_true : np.ndarray
-        True labels, shape (n_samples,)
+        True labels of shape (n_samples,).
     y_pred : np.ndarray
-        Predicted labels, shape (n_samples,)
+        Predicted labels of shape (n_samples,).
     labels : list[str]
-        List of label names
+        List of label names.
+    normalize : Literal["true", "pred", "all"] | None, optional
+        Normalization option for confusion matrix.
+        "true" normalizes over the actual (true) conditions.
+        "pred" normalizes over the predicted conditions.
+        "all" normalizes over all conditions.
+        None does not normalize.
+        Default is "true".
     cmap : str, optional
-        Colormap for the heatmap, by default "Set3"
+        Colormap for the heatmap. Default is "Set3".
 
     Returns
     -------
     None
-
-    Notes
-    -----
-    This function creates a confusion matrix from the true and predicted labels,
-    and then plots it as a heatmap using seaborn.
+        This function plots the confusion matrix and does not return any value.
     """
     # Create the confusion matrix.
-    cm: np.ndarray = confusion_matrix(y_true, y_pred)
+    cm: np.ndarray = confusion_matrix(y_true, y_pred, normalize=normalize)
 
     # Plot confusion_matrix.
-    fig: plt.Figure
-    ax: plt.Axes
-    fig, ax = plt.subplots(figsize=(8, 5))
+    _, ax = plt.subplots(figsize=(8, 5))
 
-    sns.heatmap(cm, annot=True, cmap=cmap, fmt="d", xticklabels=labels, yticklabels=labels)
+    fmt: str = ".2f" if normalize is not None else "d"
+    sns.heatmap(cm, annot=True, cmap=cmap, fmt=fmt, xticklabels=labels, yticklabels=labels)
     ax.set_yticklabels(labels, rotation=0)
     plt.ylabel("Actual")
     plt.xlabel("Predicted")
