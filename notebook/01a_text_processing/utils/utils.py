@@ -15,6 +15,7 @@ nlp = spacy.load("en_core_web_sm")
 
 def spacy_tokenizer(
     corpus: str | list[str],
+    n_process: int = 1,
     batch_size: int = 1_000,
     remove_non_alphanumeric: bool = True,
 ) -> list[str]:
@@ -25,6 +26,8 @@ def spacy_tokenizer(
     ----------
     corpus : str | list[str]
         A string or list of strings to be tokenized.
+    n_process : int, optional
+        The number of processes to use for parallel processing, by default 1.
     batch_size : int, optional
         The number of texts to process in a single batch, by default 1_000.
     remove_non_alphanumeric : bool, optional
@@ -53,13 +56,23 @@ def spacy_tokenizer(
         filter_fn = lambda token: len(token.text) > 1
 
     # Tokenize the corpus
-    doc: Doc = list(nlp.pipe(corpus, disable=["parser", "ner"], batch_size=batch_size))
+    doc: Doc = list(
+        nlp.pipe(
+            corpus,
+            disable=["parser", "ner"],
+            n_process=n_process,
+            batch_size=batch_size,
+        )
+    )
     tokens.extend([token.text.lower() for sent in doc for token in sent if filter_fn(token)])
 
     return tokens
 
 
-def preprocess(doc: str, custom_stopwords: set[str] | None = None) -> list[list[str]]:
+def preprocess(
+    doc: str,
+    custom_stopwords: set[str] | None = None,
+) -> list[list[str]]:
     """
     Preprocess a document by tokenizing it and removing stopwords.
 
@@ -85,26 +98,37 @@ def preprocess(doc: str, custom_stopwords: set[str] | None = None) -> list[list[
     return [word for word in gensim.utils.simple_preprocess(doc) if word not in custom_stopwords]
 
 
-def spacy_preprocess(doc: str, custom_stopwords: set[str] | None = None) -> list[list[str]]:
+def spacy_preprocess(
+    doc: str,
+    n_process: int = 1,
+    batch_size: int = 1_000,
+    custom_stopwords: set[str] | None = None,
+) -> list[str]:
     """
-    Preprocess the input document using spaCy tokenizer and remove custom stopwords.
+     Preprocess the input document using spaCy tokenizer and remove custom stopwords.
 
-    Parameters
-    ----------
-    doc : str
-        The input document to be preprocessed.
-    custom_stopwords : set[str] | None, optional
-        A set of custom stopwords to be removed from the tokenized document.
-        If None, an empty set will be used. Default is None.
+     Parameters
+     ----------
+     doc : str
+         The input document to be preprocessed.
+     n_process : int, optional
+         The number of processes to use for parallel processing, by default 1.
+     batch_size : int, optional
+         The number of texts to process in a single batch, by default 1_000.
+     custom_stopwords : set[str] | None, optional
+         A set of custom stopwords to be removed from the tokenized document.
+         If None, an empty set will be used. Default is None.
 
-    Returns
-    -------
-    list[list[str]]
-        A list of preprocessed tokens with custom stopwords removed.
+     Returns
+     -------
+    list[str]
+         A list of preprocessed tokens with custom stopwords removed.
     """
     if custom_stopwords is None:
         custom_stopwords = set()
-    return [word for word in spacy_tokenizer(doc) if word not in custom_stopwords]  # type: ignore
+    return [
+        word for word in spacy_tokenizer(doc, n_process, batch_size) if word not in custom_stopwords
+    ]
 
 
 def infer_stopwords(docs: list[list[str]], threshold_percentage: float = 0.4) -> set[str]:
@@ -331,7 +355,9 @@ def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
     -----
     This function uses matplotlib to display the word cloud.
     """
-    wordcloud: WordCloud = WordCloud(width=800, height=500, background_color="white")
+    wordcloud: WordCloud = WordCloud(
+        max_words=50_000, width=800, height=600, background_color="white"
+    )
 
     if isinstance(topic_words, dict):
         wordcloud = wordcloud.generate_from_frequencies(topic_words)
@@ -343,6 +369,6 @@ def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
     plt.figure(figsize=(8, 6))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis("off")
-    plt.title(title.title(), fontsize=16)
+    plt.title(title.title(), fontsize=20)
     plt.tight_layout()
     plt.show()

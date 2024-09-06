@@ -53,6 +53,7 @@ class LdaTopicExtractor:
         chunksize: int = 2_000,
         iterations: int = 400,
         passes: int = 30,
+        random_state: int = 42,
     ) -> None:
         """
         Initialize the TopicAnalyzer.
@@ -70,12 +71,15 @@ class LdaTopicExtractor:
             of a corpus, by default 400.
         passes : int, optional
             Number of passes through the corpus during training, by default 30.
+        random_state : int, optional
+            Random state for reproducibility, by default 42.
         """
         self.corpus: "MyCorpus" = corpus
         self.num_topics: int = num_topics
         self.chunksize: int = chunksize
         self.iterations: int = iterations
         self.passes: int = passes
+        self.random_state: int = random_state
         self.lda_model: LdaModel | None = None
 
     def __repr__(self) -> str:
@@ -114,6 +118,29 @@ class LdaTopicExtractor:
             combined = doc + [token for token in bigram[doc] if "_" in token]
             yield combined
 
+    @staticmethod
+    def _clean_up_corpus(dictionary: Dictionary) -> None:
+        """
+        Clean up the corpus by filtering extreme tokens and compactifying the dictionary.
+
+        Parameters
+        ----------
+        dictionary : Dictionary
+            The gensim Dictionary object to be cleaned up.
+
+        Returns
+        -------
+        None
+        """
+        min_token_freq: int = 2  # Keep tokens which are contained in at least no_below documents.
+        max_token_freq: float = 0.45  # Keep tokens in at most N% of documents.
+
+        # Filter low-freq and high-freq words
+        dictionary.filter_extremes(no_below=min_token_freq, no_above=max_token_freq)
+
+        # Remove gaps in id sequence after words are filtered
+        dictionary.compactify()
+
     def create_bow(self) -> tuple[Dictionary, list[list[tuple[int, int]]]]:
         """
         Create a Bag of Words (BoW) representation of the corpus.
@@ -122,9 +149,19 @@ class LdaTopicExtractor:
         -------
         tuple[Dictionary, list[list[tuple[int, int]]]]
             A tuple containing the dictionary and the BoW corpus.
+            The dictionary is a gensim Dictionary object.
+            The BoW corpus is a list of documents, where each document is a list of
+            (token_id, token_count) tuples.
+
+        Notes
+        -----
+        The shape of the returned BoW corpus is (n_documents, n_unique_tokens),
+        where n_documents is the number of documents in the corpus,
+        and n_unique_tokens is the number of unique tokens in the dictionary.
         """
         self.corpus_wth_bigrams_: list[list[str]] = list(self.add_bigrams())
         dictionary_: Dictionary = Dictionary(self.corpus_wth_bigrams_)
+        self._clean_up_corpus(dictionary_)
         corpus_bow: list[list[tuple[int, int]]] = [
             dictionary_.doc2bow(doc) for doc in self.corpus_wth_bigrams_
         ]
@@ -153,6 +190,7 @@ class LdaTopicExtractor:
                 num_topics=self.num_topics,
                 passes=self.passes,
                 eval_every=None,
+                random_state=self.random_state,
             )
             console.print("LDA model trained.", style="info")
         except Exception as e:
@@ -175,7 +213,7 @@ class LdaTopicExtractor:
         corpus_bow: list[list[tuple[int, int]]]
         _, corpus_bow = self.create_bow()
         self.top_topics: list[tuple[list[tuple[str, float]], float]] = self.lda_model.top_topics(  # type: ignore
-            corpus=corpus_bow, topn=self.num_topics + 10
+            corpus=corpus_bow, topn=self.num_topics
         )
         avg_topic_coherence: float = sum([t[1] for t in self.top_topics]) / self.num_topics
         console.print(f"Average topic coherence: {avg_topic_coherence:.4f}\n", style="info")
