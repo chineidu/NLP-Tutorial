@@ -133,7 +133,9 @@ class LdaTopicExtractor:
         None
         """
         min_token_freq: int = 2  # Keep tokens which are contained in at least no_below documents.
-        max_token_freq: float = 0.45  # Keep tokens in at most N% of documents.
+        # Keep tokens which are contained in no MORE than no_above documents.
+        # (fraction of total number of documents)
+        max_token_freq: float = 0.45
 
         # Filter low-freq and high-freq words
         dictionary.filter_extremes(no_below=min_token_freq, no_above=max_token_freq)
@@ -207,13 +209,14 @@ class LdaTopicExtractor:
         list[tuple[list[tuple[str, float]], float]]
             A list of tuples containing the top topics and their coherence scores.
         """
+        topn: int = 10
         if self.lda_model is None:
             self.train_model()
 
         corpus_bow: list[list[tuple[int, int]]]
         _, corpus_bow = self.create_bow()
         self.top_topics: list[tuple[list[tuple[str, float]], float]] = self.lda_model.top_topics(  # type: ignore
-            corpus=corpus_bow, topn=self.num_topics
+            corpus=corpus_bow, topn=topn
         )
         avg_topic_coherence: float = sum([t[1] for t in self.top_topics]) / self.num_topics
         console.print(f"Average topic coherence: {avg_topic_coherence:.4f}\n", style="info")
