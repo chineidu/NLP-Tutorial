@@ -1,4 +1,5 @@
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from itertools import chain
@@ -65,6 +66,57 @@ def spacy_tokenizer(
         )
     )
     tokens.extend([token.text.lower() for sent in doc for token in sent if filter_fn(token)])
+
+    return tokens
+
+
+def tokenize_by_special_chars(
+    corpus: str | list[str],
+    custom_stopwords: set[str] | None = None,
+    flatten: bool = True,
+) -> list[str] | list[list[str]]:
+    """
+    Tokenize the input corpus by splitting on special characters and optionally flatten the result.
+
+    Parameters
+    ----------
+    corpus : str or list of str
+        The input text or list of texts to be tokenized.
+    custom_stopwords : set of str, optional
+        A set of custom stopwords to be removed from the tokens.
+    flatten : bool, default True
+        If True, return a flat list of tokens. If False, return a list of token lists for
+        each input document.
+
+    Returns
+    -------
+    list of str or list of list of str
+        Tokenized and filtered words from the input corpus.
+        If flatten is True, returns a flat list of tokens.
+        If flatten is False, returns a list of token lists for each input document.
+    """
+    pattern: str = r"[\s,./;:?!\\-_@#$%^&*()]"
+    if custom_stopwords is None:
+        custom_stopwords = set()
+    if isinstance(corpus, str):
+        corpus = [corpus]
+
+    tokens: list[str] | list[list[str]] = []  # type: ignore
+
+    # Tokenizer and Filter functions
+    tok_func = lambda doc: re.compile(pattern).split(doc)
+    filter_func = lambda tok: tok.strip() and tok not in custom_stopwords
+
+    for doc in corpus:
+        if flatten:
+            # Tokenize and remove empty tokens
+            tokens.extend(tok_func(doc))  # type: ignore
+            tokens = [tok.lower() for tok in tokens if filter_func(tok)]  # type: ignore
+        else:
+            # Tokenize and remove empty tokens
+            doc_tok: list[str] = tok_func(doc)
+            doc_tok = [tok.lower() for tok in doc_tok if filter_func(tok)]
+            tokens.append(doc_tok)  # type: ignore
 
     return tokens
 
