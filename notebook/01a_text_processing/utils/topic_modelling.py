@@ -85,16 +85,23 @@ class LdaTopicExtractor:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(n_corpus={len(self.corpus):,})"  # type: ignore
 
-    def _create_bigrams(self) -> Phrases:
+    def _create_bigrams(self, min_count: int = 20, threshold: float = 2.0) -> Phrases:
         """
         Create bigrams from the corpus.
+
+        Parameters
+        ----------
+        min_count : int, optional
+            The minimum count of a bigram to be considered, by default 20.
+        threshold : float, optional
+            The threshold for considering a bigram, by default 2.0.
 
         Returns
         -------
         Phrases
             A Phrases model for creating bigrams.
         """
-        return Phrases(sentences=self.corpus, min_count=20)
+        return Phrases(sentences=self.corpus, min_count=min_count, threshold=threshold)
 
     def add_bigrams(self) -> "MyCorpus":  # type: ignore
         """
