@@ -3,15 +3,30 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Generator, Iterable, Iterator
 
 import gensim
 import spacy
+from gensim.models import Phrases
 from matplotlib import pyplot as plt
+from rich.console import Console
+from rich.theme import Theme
 from spacy.tokens import Doc, Token
 from wordcloud import WordCloud
 
 nlp = spacy.load("en_core_web_sm")
+custom_theme = Theme(
+    {
+        "white": "#FFFFFF",  # Bright white
+        "info": "#00FF00",  # Bright green
+        "warning": "#FFD700",  # Bright gold
+        "error": "#FF1493",  # Deep pink
+        "success": "#00FFFF",  # Cyan
+        "highlight": "#FF4500",  # Orange-red
+    }
+)
+
+console = Console(theme=custom_theme)
 
 
 def spacy_tokenizer(
@@ -76,7 +91,8 @@ def tokenize_by_special_chars(
     flatten: bool = True,
 ) -> list[str] | list[list[str]]:
     """
-    Tokenize the input corpus by splitting on special characters and optionally flatten the result.
+    Tokenize the input corpus by splitting on special characters and digits. It retains the digits
+    in the tokens and optionally flattens the result.
 
     Parameters
     ----------
@@ -95,7 +111,9 @@ def tokenize_by_special_chars(
         If flatten is True, returns a flat list of tokens.
         If flatten is False, returns a list of token lists for each input document.
     """
-    pattern: str = r"[\s,./;:?!\\-_@#$%^&*()]"
+    pattern_1: str = r"[\s,./;:?!\\_@#$%^&*()\-]"
+    pattern_2: str = r"(\d+)"
+
     if custom_stopwords is None:
         custom_stopwords = set()
     if isinstance(corpus, str):
@@ -104,7 +122,13 @@ def tokenize_by_special_chars(
     tokens: list[str] | list[list[str]] = []  # type: ignore
 
     # Tokenizer and Filter functions
-    tok_func = lambda doc: re.compile(pattern).split(doc)
+    def tok_func(doc: str) -> list[str]:
+        # Split on special characters, but retain digits
+        tokens: list[str] = re.compile(pattern_1).split(doc)
+
+        tokens = [tok for string_ in tokens for tok in re.compile(pattern_2).split(string_) if tok]
+        return tokens
+
     filter_func = lambda tok: tok.strip() and tok not in custom_stopwords
 
     for doc in corpus:
@@ -387,7 +411,115 @@ def stream_corpus(corpus_iterable: MyCorpus | list[list[str]], size: int = 100) 
     return all_tokens
 
 
-def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
+def create_bigrams(
+    corpus: list[list[str]] | Iterable[list[str]],
+    min_count: int = 10,
+    threshold: float = 2.0,
+) -> Phrases:
+    """
+    Create a Phrases model from a corpus of documents.
+
+    Parameters
+    ----------
+    corpus : list[list[str]] | Iterable[list[str]]
+        An iterable containing tokenized documents. Each document is a list of strings.
+    min_count : int, optional
+        Minimum count of n-grams to be included in the output Phrases model,
+        by default 10.
+    threshold : float, optional
+        Threshold for forming the phrases (higher means fewer phrases),
+        by default 2.0.
+
+    Returns
+    -------
+    Phrases
+        A Phrases model trained on the given corpus.
+
+    Notes
+    -----
+    The `min_count` parameter is capped at 0.4 times the length of the
+    corpus. This is to prevent the generation of too many phrases.
+    """
+    min_count = min(min_count, int(0.4 * len(corpus)))  # type: ignore
+    return Phrases(sentences=corpus, min_count=min_count, threshold=threshold)
+
+
+def add_bigrams(
+    corpus: list[list[str]] | Iterable[list[str]],
+    min_count: int = 10,
+    threshold: float = 2.0,
+) -> Generator[list[str], None, None]:
+    bigram: Phrases = create_bigrams(corpus, min_count, threshold)
+    if isinstance(corpus, list):
+        corpus = MyCorpus(corpus)
+
+    try:
+        # Reset the iterator
+        corpus.index = 0  # type: ignore
+    except AttributeError:
+        console.print("Failed to reset iterator index")
+        pass
+
+    for doc in corpus:
+        combined = doc + [token for token in bigram[doc] if "_" in token]
+        yield combined
+
+
+class Dataset:
+    def __init__(self, data: list[str]):
+        """
+        Initialize a Dataset object.
+
+        Parameters
+        ----------
+        data : list[str]
+            The list of strings to be iterated over.
+        """
+        self.data = data
+        self.index = 0
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the object.
+        """
+        return f"{self.__class__.__name__}(data={len(self.data):,} items)"
+
+    def __iter__(self) -> Iterator[list[str]]:
+        self.index = 0
+        return self
+
+    def __next__(self) -> list[str]:
+        """
+        Return the next item from the data list, tokenized by special characters.
+
+        Returns
+        -------
+        list[str]
+            The list of tokens for the next item in the data list.
+
+        Raises
+        ------
+        StopIteration
+            If the end of the data list is reached.
+        """
+        if self.index >= len(self.data):
+            raise StopIteration
+
+        value = self.data[self.index]
+        self.index += 1
+        tok_docs: list[str] = [tok for tok in tokenize_by_special_chars(value)]  # type: ignore
+        return tok_docs
+
+    def __len__(self) -> int:
+        """
+        Return the length of the data list.
+        """
+        return len(self.data)
+
+
+def create_wordcloud(
+    topic_words: str | dict[str, int], title: str, max_words: int = 50_000
+) -> None:
     """
     Create and display a word cloud from topic words.
 
@@ -397,6 +529,8 @@ def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
         Either a dictionary of words and their frequencies, or a string of text.
     title : str
         The title for the word cloud plot.
+    max_words : int, optional
+        The maximum number of words to include in the word cloud, by default 50_000
 
     Returns
     -------
@@ -408,7 +542,7 @@ def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
     This function uses matplotlib to display the word cloud.
     """
     wordcloud: WordCloud = WordCloud(
-        max_words=50_000, width=800, height=600, background_color="white"
+        max_words=max_words, width=800, height=600, background_color="white"
     )
 
     if isinstance(topic_words, dict):
@@ -421,6 +555,6 @@ def create_wordcloud(topic_words: str | dict[str, int], title: str) -> None:
     plt.figure(figsize=(8, 6))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis("off")
-    plt.title(title.title(), fontsize=20)
+    plt.title(title.title(), fontsize=25)
     plt.tight_layout()
     plt.show()
