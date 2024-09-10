@@ -88,6 +88,7 @@ def spacy_tokenizer(
 def tokenize_by_special_chars(
     corpus: str | list[str],
     custom_stopwords: set[str] | None = None,
+    drop_digits: bool = False,
     flatten: bool = True,
 ) -> list[str] | list[list[str]]:
     """
@@ -100,6 +101,8 @@ def tokenize_by_special_chars(
         The input text or list of texts to be tokenized.
     custom_stopwords : set of str, optional
         A set of custom stopwords to be removed from the tokens.
+    drop_digits : bool, default False
+        If True, remove digits from the tokens.
     flatten : bool, default True
         If True, return a flat list of tokens. If False, return a list of token lists for
         each input document.
@@ -111,8 +114,10 @@ def tokenize_by_special_chars(
         If flatten is True, returns a flat list of tokens.
         If flatten is False, returns a list of token lists for each input document.
     """
-    pattern_1: str = r"[\s,./;:?!\\_@#$%^&*()\-]"
-    pattern_2: str = r"(\d+)"
+    pattern_1: str = r"[\s,./;:?!\\_@#$%^&*=()\d\-]"
+    pattern_2: str = r"[\s,./;:?!\\_@#$%^&*=()\-]"
+    pattern_3: str = r"(\d+)"
+    token_threshold: int = 2
 
     if custom_stopwords is None:
         custom_stopwords = set()
@@ -123,13 +128,19 @@ def tokenize_by_special_chars(
 
     # Tokenizer and Filter functions
     def tok_func(doc: str) -> list[str]:
-        # Split on special characters, but retain digits
-        tokens: list[str] = re.compile(pattern_1).split(doc)
-
-        tokens = [tok for string_ in tokens for tok in re.compile(pattern_2).split(string_) if tok]
+        """Split on special characters, but retain digits."""
+        if drop_digits:
+            tokens: list[str] = re.compile(pattern_1).split(doc)
+        else:
+            tokens = re.compile(pattern_2).split(doc)
+            tokens = [
+                tok for string_ in tokens for tok in re.compile(pattern_3).split(string_) if tok
+            ]
         return tokens
 
-    filter_func = lambda tok: tok.strip() and tok not in custom_stopwords
+    filter_func = (
+        lambda tok: tok.strip() and tok not in custom_stopwords and len(tok) > token_threshold
+    )
 
     for doc in corpus:
         if flatten:
