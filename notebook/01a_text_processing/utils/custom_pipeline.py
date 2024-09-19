@@ -1,8 +1,9 @@
 from typing import Any, Iterable
 
+import numpy as np
 from gensim.corpora import Dictionary
 from gensim.matutils import corpus2csc
-from gensim.models import LsiModel, TfidfModel
+from gensim.models import FastText, LsiModel, TfidfModel
 from scipy.sparse import csr_matrix
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -263,3 +264,79 @@ class LsiTransformer(BaseEstimator, TransformerMixin):
         corpus: list[list[tuple[int, int]]] = X["corpus"]
         corpus_vec: list[list[tuple[int, float]]] = self.model[corpus]  # type: ignore
         return corpus2csc(corpus_vec).transpose()
+
+
+class FastTextTransformer(BaseEstimator, TransformerMixin):
+    """
+    A transformer that uses FastText embeddings to convert text documents
+    into vector representations.
+
+    Parameters
+    ----------
+    model : FastText
+        The pre-trained FastText model.
+
+    Attributes
+    ----------
+    model : FastText
+        The loaded FastText model.
+    """
+
+    def __init__(self, model: FastText) -> None:
+        self.model: FastText = model
+
+    def get_embeddings(self, document: list[str]) -> np.ndarray:
+        """
+        Compute the average embedding for a given document.
+
+        Parameters
+        ----------
+        document : list[str]
+            A list of words representing the document.
+
+        Returns
+        -------
+        np.ndarray
+            The average embedding vector for the document.
+            Shape: (embedding_size,)
+        """
+        word_embeddings: list[np.ndarray] = [self.model.wv[word] for word in document]
+        document_embedding: np.ndarray = np.mean(word_embeddings, axis=0)
+        return document_embedding
+
+    def fit(self, X: list[str], y: Any | None = None) -> "FastTextTransformer":
+        """
+        Fit the transformer to the data.
+
+        Parameters
+        ----------
+        X : list[str]
+            The input samples, each a string representing a document.
+        y : Any | None, optional
+            Ignored. This parameter exists only for compatibility with
+            sklearn.pipeline.Pipeline.
+
+        Returns
+        -------
+        FastTextTransformer
+            The fitted transformer.
+        """
+        return self
+
+    def transform(self, X: list[list[str]]) -> np.ndarray:
+        """
+        Transform the input documents into their FastText embeddings.
+
+        Parameters
+        ----------
+        X : list[list[str]]
+            The input samples, each a list of strings representing words in a document.
+
+        Returns
+        -------
+        np.ndarray
+            The FastText embeddings for each input document.
+            Shape: (n_samples, embedding_size)
+        """
+        embeddings: np.ndarray = np.array([self.get_embeddings(doc) for doc in X])
+        return embeddings
