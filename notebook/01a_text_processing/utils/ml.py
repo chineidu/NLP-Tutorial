@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import spacy
-import torch
 from matplotlib import pyplot as plt
 from sklearn.metrics import (
     auc,
@@ -15,7 +14,6 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import learning_curve
 from spacy.tokens import Doc, Token
-from torch import nn
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -383,91 +381,6 @@ def plot_learning_curve(
     plt.ylim([0.5, 1.03])
     plt.tight_layout()
     plt.show()
-
-
-# ==== RNN Training ====
-def train_model(
-    dataloader: torch.utils.data.DataLoader, model: nn.Module, lr: float = 0.001
-) -> tuple[float, float]:
-    """
-    Train the model using the provided dataloader.
-
-    Parameters
-    ----------
-    dataloader : torch.utils.data.DataLoader
-        The dataloader containing the training data.
-    model : nn.Module
-        The neural network model to be trained.
-    lr : float, optional
-        The learning rate for the optimizer (default is 0.001).
-
-    Returns
-    -------
-    tuple[float, float]
-        A tuple containing the average accuracy and average loss.
-    """
-    loss_fn: nn.BCELoss = nn.BCELoss()
-    optimizer: torch.optim.Adam = torch.optim.Adam(model.parameters(), lr=lr)
-
-    model.train()
-    total_acc: float = 0
-    total_loss: float = 0
-
-    for text_batch, label_batch, lengths in dataloader:
-        optimizer.zero_grad()
-
-        # Forward pass
-        pred: torch.Tensor = model(text_batch, lengths)[:, 0]
-        loss: torch.Tensor = loss_fn(pred, label_batch)
-
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-
-        # Update metrics
-        total_acc += ((pred >= 0.5).float() == label_batch).float().sum().item()
-        total_loss += loss.item() * label_batch.size(0)
-
-    avg_acc: float = total_acc / len(dataloader.dataset)
-    avg_loss: float = total_loss / len(dataloader.dataset)
-
-    return (avg_acc, avg_loss)
-
-
-def evaluate_model(
-    dataloader: torch.utils.data.DataLoader, model: nn.Module
-) -> tuple[float, float]:
-    """
-    Evaluate the model using the provided dataloader.
-
-    Parameters
-    ----------
-    dataloader : torch.utils.data.DataLoader
-        The dataloader containing the evaluation data.
-    model : nn.Module
-        The neural network model to be evaluated.
-
-    Returns
-    -------
-    tuple[float, float]
-        A tuple containing the average accuracy and average loss.
-    """
-    loss_fn: nn.BCELoss = nn.BCELoss()
-
-    model.eval()
-    total_acc: float = 0
-    total_loss: float = 0
-
-    with torch.no_grad():
-        for text_batch, label_batch, lengths in dataloader:
-            pred: torch.Tensor = model(text_batch, lengths)[:, 0]
-            loss: torch.Tensor = loss_fn(pred, label_batch)
-            total_acc += ((pred >= 0.5).float() == label_batch).float().sum().item()
-            total_loss += loss.item() * label_batch.size(0)
-
-    avg_acc: float = total_acc / len(dataloader.dataset)
-    avg_loss: float = total_loss / len(dataloader.dataset)
-    return (avg_acc, avg_loss)
 
 
 # ==== SpaCy Helper Functions ====

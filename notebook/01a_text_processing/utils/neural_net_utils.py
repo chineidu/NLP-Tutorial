@@ -307,3 +307,158 @@ def plot_values(
     if save_plot:
         plt.savefig(f"{label}-plot.pdf")
     plt.show()
+
+
+# ==== RNN Training ====
+# Binary Classification
+def train_model_binary(
+    dataloader: torch.utils.data.DataLoader, model: nn.Module, lr: float = 0.001
+) -> tuple[float, float]:
+    """
+    Train the model using the provided dataloader.
+
+    Parameters
+    ----------
+    dataloader : torch.utils.data.DataLoader
+        The dataloader containing the training data.
+    model : nn.Module
+        The neural network model to be trained.
+    lr : float, optional
+        The learning rate for the optimizer (default is 0.001).
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple containing the average accuracy and average loss.
+    """
+    loss_fn: nn.BCELoss = nn.BCELoss()
+    optimizer: torch.optim.Adam = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+    total_acc: float = 0
+    total_loss: float = 0
+
+    for text_batch, label_batch, lengths in dataloader:
+        optimizer.zero_grad()
+
+        # Forward pass
+        pred: torch.Tensor = model(text_batch, lengths)[:, 0]
+        loss: torch.Tensor = loss_fn(pred, label_batch)
+
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+
+        # Update metrics
+        total_acc += ((pred >= 0.5).float() == label_batch).float().sum().item()
+        total_loss += loss.item() * label_batch.size(0)
+
+    avg_acc: float = total_acc / len(dataloader.dataset)
+    avg_loss: float = total_loss / len(dataloader.dataset)
+
+    return (avg_acc, avg_loss)
+
+
+# Binary Classification
+def evaluate_model_binary(
+    dataloader: torch.utils.data.DataLoader, model: nn.Module
+) -> tuple[float, float]:
+    """
+    Evaluate the model using the provided dataloader.
+
+    Parameters
+    ----------
+    dataloader : torch.utils.data.DataLoader
+        The dataloader containing the evaluation data.
+    model : nn.Module
+        The neural network model to be evaluated.
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple containing the average accuracy and average loss.
+    """
+    loss_fn: nn.BCELoss = nn.BCELoss()
+
+    model.eval()
+    total_acc: float = 0
+    total_loss: float = 0
+
+    with torch.no_grad():
+        for text_batch, label_batch, lengths in dataloader:
+            pred: torch.Tensor = model(text_batch, lengths)[:, 0]
+            loss: torch.Tensor = loss_fn(pred, label_batch)
+            total_acc += ((pred >= 0.5).float() == label_batch).float().sum().item()
+            total_loss += loss.item() * label_batch.size(0)
+
+    avg_acc: float = total_acc / len(dataloader.dataset)
+    avg_loss: float = total_loss / len(dataloader.dataset)
+    return (avg_acc, avg_loss)
+
+
+# ==== RNN Training ====
+# Multi-class Classification
+def train_model(dataloader: DataLoader, model: nn.Module, lr: float = 0.001) -> tuple[float, float]:
+    criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+    optimizer: torch.optim.Adam = torch.optim.Adam(model.parameters(), lr=lr)
+
+    model.train()
+    total_acc: float = 0
+    total_loss: float = 0
+
+    for batch in dataloader:
+        dates = batch["dates"]
+        input_ids = batch["input_ids"]
+        amounts = batch["amounts"]
+        labels = batch["label"]
+
+        optimizer.zero_grad()
+
+        # Forward pass
+        logits: torch.Tensor = model(dates, input_ids, amounts)
+        loss: torch.Tensor = criterion(logits, labels)
+        pred: torch.Tensor = torch.argmax(logits, dim=1)
+
+        # Backward pass
+        loss.backward()
+        optimizer.step()
+
+        # Update metrics
+        total_acc += (pred == labels).float().sum().item()
+        total_loss += loss.item() * labels.size(0)
+
+    avg_acc: float = total_acc / len(dataloader.dataset)
+    avg_loss: float = total_loss / len(dataloader.dataset)
+
+    return (avg_acc, avg_loss)
+
+
+# Multi-class Classification
+def evaluate_model_multi(
+    dataloader: torch.utils.data.DataLoader, model: nn.Module
+) -> tuple[float, float]:
+    criterion: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+
+    model.eval()
+    total_acc: float = 0
+    total_loss: float = 0
+
+    with torch.no_grad():
+        for batch in dataloader:
+            dates = batch["dates"]
+            input_ids = batch["input_ids"]
+            amounts = batch["amounts"]
+            labels = batch["label"]
+
+            logits: torch.Tensor = model(dates, input_ids, amounts)
+            loss: torch.Tensor = criterion(logits, labels)
+            pred: torch.Tensor = torch.argmax(logits, dim=1)
+
+            # Update metrics
+            total_acc += (pred == labels).float().sum().item()
+            total_loss += loss.item() * labels.size(0)
+
+    avg_acc: float = total_acc / len(dataloader.dataset)
+    avg_loss: float = total_loss / len(dataloader.dataset)
+
+    return (avg_acc, avg_loss)

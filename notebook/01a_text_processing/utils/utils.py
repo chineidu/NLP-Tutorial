@@ -2,8 +2,9 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import datetime
 from itertools import chain
-from typing import Any, Callable, Generator, Iterable, Iterator
+from typing import Any, Callable, Generator, Iterable, Iterator, List, Tuple
 
 import gensim
 import spacy
@@ -569,3 +570,94 @@ def create_wordcloud(
     plt.title(title.title(), fontsize=25)
     plt.tight_layout()
     plt.show()
+
+
+def extract_single_data(data: str) -> Tuple[List[str], List[str], List[float]]:
+    """
+    Extract date, description, and amount from a single data string.
+
+    Parameters
+    ----------
+    data : str
+        A string containing date, description, and amount separated by ' || '.
+
+    Returns
+    -------
+    Tuple[List[str], List[str], List[float]]
+        A tuple containing lists of dates, descriptions, and amounts.
+    """
+    delimiter: str = " || "
+
+    dates: List[str] = []
+    descriptions: List[str] = []
+    amounts: List[float] = []
+
+    # Split on the pipe character
+    for row in data:
+        if row.strip():
+            date, description, amount = row.split(delimiter)
+            dates.append(date)
+            descriptions.append(description)
+            amounts.append(float(amount))
+
+    return dates, descriptions, amounts
+
+
+def extract_all_data(
+    data: List[str],
+) -> Tuple[List[List[str]], List[List[str]], List[List[float]]]:
+    """
+    Extract date, description, and amount from multiple data strings.
+
+    Parameters
+    ----------
+    data : List[str]
+        A list of strings, each containing date, description, and
+        amount separated by ' || '.
+
+    Returns
+    -------
+    Tuple[List[List[str]], List[List[str]], List[List[float]]]
+        A tuple containing lists of lists for dates, descriptions, and amounts.
+    """
+    dates: List[List[str]] = []
+    descriptions: List[List[str]] = []
+    amounts: List[List[float]] = []
+
+    for row in data:
+        dates_, descriptions_, amounts_ = extract_single_data(row)
+
+        dates.append(dates_)
+        descriptions.append(descriptions_)
+        amounts.append(amounts_)
+
+    return dates, descriptions, amounts
+
+
+def convert_date_to_unix_timestamp(date_string: str, format: str = "%Y-%m-%d") -> int:
+    """
+    Convert a date string to a Unix timestamp.
+
+    Parameters
+    ----------
+    date_string : str
+        The date string to convert.
+    format : str, optional
+        The format of the date string (default is "%Y-%m-%d").
+
+    Returns
+    -------
+    int
+        The Unix timestamp corresponding to the input date string.
+    """
+    try:
+        if isinstance(date_string, str):
+            # Convert the date string to a datetime object
+            date_object = datetime.strptime(date_string, format)
+        # Convert the datetime object to a Unix timestamp
+        unix_timestamp = int(date_object.timestamp())
+        return unix_timestamp
+
+    except ValueError as err:
+        console.print(f"Error: {err} | date_string: {date_string}")
+        return 0
