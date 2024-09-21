@@ -3,11 +3,15 @@ from datetime import datetime
 import numpy as np
 import torch
 from custom_tokenizers import RegexTokenizer
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import Dataset
 
 date_scaler: MinMaxScaler = MinMaxScaler(clip=False)
 amount_scaler: MinMaxScaler = MinMaxScaler(clip=False)
+scaler: dict[str, MinMaxScaler | StandardScaler] = {
+    "date_scaler": date_scaler,
+    "amount_scaler": amount_scaler,
+}
 
 # Usage
 # dates_array: np.ndarray = date_scaler.fit_transform(dates_array)
@@ -30,6 +34,8 @@ class StatementDataset(Dataset):
         List of labels corresponding to each set of transactions.
     tokenizer : RegexTokenizer
         Tokenizer object for encoding descriptions.
+    scaler : dict[str, MinMaxScaler | StandardScaler]
+        Scaler object for scaling numeric features.
     max_length : int
         Maximum length of encoded descriptions.
     max_transactions : int
@@ -44,8 +50,9 @@ class StatementDataset(Dataset):
         data: list[list[str]],
         labels: list[int],
         tokenizer: RegexTokenizer,
+        scaler: dict[str, MinMaxScaler | StandardScaler],
         max_length: int = 100,
-        max_transactions: int = 100,
+        max_transactions: int = 200,
     ) -> None:
         """
         Initialize the StatementDataset.
@@ -58,14 +65,17 @@ class StatementDataset(Dataset):
             list of labels corresponding to each set of transactions.
         tokenizer : Any
             Tokenizer object for encoding descriptions.
+        scaler : dict[str, MinMaxScaler | StandardScaler]
+            Scaler object for scaling numeric features.
         max_length : int, optional
             Maximum length of encoded descriptions. Default is 100.
         max_transactions : int, optional
-            Maximum number of transactions to consider. Default is 100.
+            Maximum number of transactions to consider. Default is 200.
         """
         self.data = data
         self.labels = labels
         self.tokenizer = tokenizer
+        self.scaler = scaler
         self.max_length = max_length
         self.max_transactions = max_transactions
 
@@ -123,10 +133,12 @@ class StatementDataset(Dataset):
         encoded: list[list[int]] = self.tokenizer.batch_encode(descriptions, self.max_length)
 
         # Scale dates and amounts
-        scaled_amounts: np.ndarray = amount_scaler.transform(
-            np.array(amounts).reshape(-1, 1)
-        ).reshape(-1)
-        scaled_dates: np.ndarray = date_scaler.transform(np.array(dates).reshape(-1, 1)).reshape(-1)
+        scaled_amounts: np.ndarray = (
+            self.scaler["amount_scaler"].transform(np.array(amounts).reshape(-1, 1)).reshape(-1)
+        )
+        scaled_dates: np.ndarray = (
+            self.scaler["date_scaler"].transform(np.array(dates).reshape(-1, 1)).reshape(-1)
+        )
 
         return {
             "dates": torch.tensor(scaled_dates, dtype=torch.float32),
