@@ -1,6 +1,7 @@
-from typing import Any, Iterable
+from typing import Any, Iterable, List
 
 import numpy as np
+from compress_fasttext.compress import CompressedFastTextKeyedVectors
 from gensim.corpora import Dictionary
 from gensim.matutils import corpus2csc
 from gensim.models import FastText, LsiModel, TfidfModel
@@ -330,6 +331,82 @@ class FastTextTransformer(BaseEstimator, TransformerMixin):
         Parameters
         ----------
         X : list[list[str]]
+            The input samples, each a list of strings representing words in a document.
+
+        Returns
+        -------
+        np.ndarray
+            The FastText embeddings for each input document.
+            Shape: (n_samples, embedding_size)
+        """
+        embeddings: np.ndarray = np.array([self.get_embeddings(doc) for doc in X])
+        return embeddings
+
+
+class QuantizedFastTextTransformer(BaseEstimator, TransformerMixin):
+    """
+    A transformer that uses FastText embeddings to convert text documents
+    into vector representations.
+
+    Parameters
+    ----------
+    model : CompressedFastTextKeyedVectors
+        The pre-trained compressed FastText model.
+
+    Attributes
+    ----------
+    model : CompressedFastTextKeyedVectors
+        The loaded compressed FastText model.
+    """
+
+    def __init__(self, model: CompressedFastTextKeyedVectors) -> None:
+        self.model: CompressedFastTextKeyedVectors = model
+
+    def get_embeddings(self, document: List[str]) -> np.ndarray:
+        """
+        Compute the average embedding for a given document.
+
+        Parameters
+        ----------
+        document : List[str]
+            A list of words representing the document.
+
+        Returns
+        -------
+        np.ndarray
+            The average embedding vector for the document.
+            Shape: (embedding_size,)
+        """
+        word_embeddings: List[np.ndarray] = [self.model[word] for word in document]
+        document_embedding: np.ndarray = np.mean(word_embeddings, axis=0)
+        return document_embedding
+
+    def fit(self, X: List[str], y: Any | None = None) -> "QuantizedFastTextTransformer":
+        """
+        Fit the transformer to the data.
+
+        Parameters
+        ----------
+        X : List[str]
+            The input samples, each a string representing a document.
+        y : Any | None, optional
+            Ignored. This parameter exists only for compatibility with
+            sklearn.pipeline.Pipeline.
+
+        Returns
+        -------
+        QuantizedFastTextTransformer
+            The fitted transformer.
+        """
+        return self
+
+    def transform(self, X: List[List[str]]) -> np.ndarray:
+        """
+        Transform the input documents into their FastText embeddings.
+
+        Parameters
+        ----------
+        X : List[List[str]]
             The input samples, each a list of strings representing words in a document.
 
         Returns
