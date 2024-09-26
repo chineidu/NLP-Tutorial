@@ -20,12 +20,12 @@ class RegexTokenizer:
     PAD: int = 0
     UNK: int = 1
 
-    def __init__(self, max_vocab_size: int = 100_000):
+    def __init__(self, max_vocab_size: int = 70_000):
         """
         Initialize the RegexTokenizer.
 
         Args:
-            max_vocab_size (int): Maximum size of the vocabulary. Defaults to 30,000.
+            max_vocab_size (int): Maximum size of the vocabulary. Defaults to 70,000.
         """
         self.max_vocab_size: int = max_vocab_size
         self.word2idx: dict[str, int] = {"<PAD>": self.PAD, "<UNK>": self.UNK}
