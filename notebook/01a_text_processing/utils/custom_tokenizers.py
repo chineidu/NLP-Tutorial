@@ -1,6 +1,13 @@
+import os
 from collections import Counter
+from typing import List
+
+from transformers import PreTrainedTokenizerFast
 
 from utils import tokenize_by_special_chars  # type: ignore
+
+# Set the environment variable to disable the tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 class RegexTokenizer:
@@ -113,3 +120,146 @@ class RegexTokenizer:
             int: Size of the vocabulary.
         """
         return len(self.word2idx)
+
+
+class WordPieceTokenizer:
+    """
+    A custom tokenizer that uses WordPiece to tokenize text and build a vocabulary.
+
+    Attributes
+    ----------
+    UNK : int
+        Unknown token index.
+    PAD : int
+        Padding token index.
+    tokenizer : PreTrainedTokenizerFast
+        The underlying WordPiece tokenizer.
+    vocab_size : int
+        Size of the vocabulary.
+    """
+
+    UNK: int = 0
+    PAD: int = 1
+
+    def __init__(self, tokenizer_file: str) -> None:
+        """
+        Initialize the WordPieceTokenizer.
+
+        Parameters
+        ----------
+        tokenizer_file : str
+            Path to the tokenizer file.
+        """
+        self.tokenizer: PreTrainedTokenizerFast = PreTrainedTokenizerFast(
+            tokenizer_file=tokenizer_file,
+            unk_token="[UNK]",
+            pad_token="[PAD]",
+            cls_token="[CLS]",
+            sep_token="[SEP]",
+            mask_token="[MASK]",
+        )
+        self.vocab_size: int = self.tokenizer.vocab_size
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the WordPieceTokenizer.
+
+        Returns
+        -------
+        str
+            A string representation of the WordPieceTokenizer.
+        """
+        return f"{self.__class__.__name__}(vocab_size={self.vocab_size:,})"
+
+    def tokenize(self, text: str) -> List[str]:
+        """
+        Tokenize the input text.
+
+        Parameters
+        ----------
+        text : str
+            The input text to tokenize.
+
+        Returns
+        -------
+        List[str]
+            A list of tokens.
+        """
+        tokens: List[str] = self.tokenizer.tokenize(text)
+        return tokens
+
+    def batch_tokenize(self, texts: List[str]) -> List[List[str]]:
+        """
+        Tokenize a batch of input texts.
+
+        Parameters
+        ----------
+        texts : List[str]
+            A list of input texts to tokenize.
+
+        Returns
+        -------
+        List[List[str]]
+            A list of lists of tokens, where each inner list corresponds to a tokenized
+            input text.
+        """
+        return [self.tokenize(text) for text in texts]
+
+    def encode(self, text: str, max_length: int = 10) -> List[int]:
+        """
+        Encode the input text into a list of token IDs.
+
+        Parameters
+        ----------
+        text : str
+            The input text to encode.
+        max_length : int, optional
+            The maximum length of the encoded sequence, by default 10.
+
+        Returns
+        -------
+        List[int]
+            A list of token IDs.
+        """
+        tokens: List[str] = self.tokenizer.tokenize(text)
+        encoded: List[int] = self.tokenizer.convert_tokens_to_ids(tokens)
+        if len(encoded) < max_length:
+            encoded += [self.PAD] * (max_length - len(encoded))
+        else:
+            encoded = encoded[:max_length]
+        return encoded
+
+    def batch_encode(self, texts: List[str], max_length: int = 10) -> List[List[int]]:
+        """
+        Encode a batch of input texts into lists of token IDs.
+
+        Parameters
+        ----------
+        texts : List[str]
+            A list of input texts to encode.
+        max_length : int, optional
+            The maximum length of each encoded sequence, by default 10.
+
+        Returns
+        -------
+        List[List[int]]
+            A list of lists of token IDs, where each inner list corresponds to
+            an encoded input text.
+        """
+        return [self.encode(text, max_length) for text in texts]
+
+    def decode(self, ids: List[int]) -> str:
+        """
+        Decode a list of token IDs back into text.
+
+        Parameters
+        ----------
+        ids : List[int]
+            A list of token IDs to decode.
+
+        Returns
+        -------
+        str
+            The decoded text.
+        """
+        return self.tokenizer.decode(ids)
