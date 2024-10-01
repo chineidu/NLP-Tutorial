@@ -297,18 +297,33 @@ class MultiHeadAttention(nn.Module):
         Dimension of the hidden layer.
     num_heads : int
         Number of attention heads.
+
+    Attributes
+    ----------
+    num_heads : int
+        Number of attention heads.
+    head_dim : int
+        Dimension of each attention head.
+    query : nn.Linear
+        Linear layer for query projection.
+    key : nn.Linear
+        Linear layer for key projection.
+    value : nn.Linear
+        Linear layer for value projection.
+    fc_out : nn.Linear
+        Linear layer for output projection.
     """
 
-    def __init__(self, hidden_dim: int, num_heads: int):
+    def __init__(self, hidden_dim: int, num_heads: int) -> None:
         super().__init__()
-        self.num_heads = num_heads
-        self.head_dim = hidden_dim // num_heads
+        self.num_heads: int = num_heads
+        self.head_dim: int = hidden_dim // num_heads
 
-        self.query = nn.Linear(hidden_dim, hidden_dim)
-        self.key = nn.Linear(hidden_dim, hidden_dim)
-        self.value = nn.Linear(hidden_dim, hidden_dim)
+        self.query: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
+        self.key: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
+        self.value: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
 
-        self.fc_out = nn.Linear(hidden_dim, hidden_dim)
+        self.fc_out: nn.Linear = nn.Linear(hidden_dim, hidden_dim)
 
     def forward(
         self,
@@ -329,14 +344,15 @@ class MultiHeadAttention(nn.Module):
         value : torch.Tensor
             Value tensor of shape (batch_size, seq_len, hidden_dim).
         mask : torch.Tensor | None, optional
-            Mask tensor of shape (batch_size, seq_len, seq_len).
+            Mask tensor of shape (batch_size, seq_len, seq_len), by default None.
 
         Returns
         -------
         tuple[torch.Tensor, torch.Tensor]
-            Tuple containing:
-            - Output tensor of shape (batch_size, seq_len, hidden_dim)
-            - Attention weights of shape (batch_size, num_heads, seq_len, seq_len)
+            A tuple containing:
+            - out: Output tensor of shape (batch_size, seq_len, hidden_dim).
+            - attn_weights: Attention weights tensor of shape
+            (batch_size, num_heads, seq_len, seq_len).
         """
         batch_size: int = query.shape[0]
 
@@ -344,49 +360,70 @@ class MultiHeadAttention(nn.Module):
         K: torch.Tensor = self.key(key)
         V: torch.Tensor = self.value(value)
 
-        Q = Q.reshape(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        K = K.reshape(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        V = V.reshape(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        Q = Q.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        K = K.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        V = V.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
 
-        energy: torch.Tensor = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.head_dim**0.5
+        attn_scores: torch.Tensor = torch.matmul(Q, K.transpose(3, 2)) / self.head_dim**0.5
 
         if mask is not None:
-            energy = energy.masked_fill(mask == 0, float("-1e20"))
+            attn_scores = attn_scores.masked_fill(mask == 0, float("-inf"))
 
-        attention: torch.Tensor = torch.softmax(energy, dim=-1)
+        attn_weights: torch.Tensor = torch.softmax(attn_scores, dim=-1)
 
-        out: torch.Tensor = torch.matmul(attention, V)
-        out = out.permute(0, 2, 1, 3).contiguous()
-        out = out.reshape(batch_size, -1, self.num_heads * self.head_dim)
+        out: torch.Tensor = torch.matmul(attn_weights, V)
+        out = out.transpose(1, 2).contiguous()
+        out = out.view(batch_size, -1, self.num_heads * self.head_dim)
         out = self.fc_out(out)
 
-        return out, attention
+        return out, attn_weights
 
 
 class EnhancedLSTMClassifier(nn.Module):
     """
-    Enhanced LSTM Classifier with Multi-Head Attention.
+    Enhanced LSTM Classifier with attention mechanism and positional embeddings.
 
     Parameters
     ----------
     vocab_size : int
         Size of the vocabulary.
     embedding_dim : int
-        Dimension of the embedding layer.
+        Dimension of the embedding vectors.
     hidden_dim : int
-        Dimension of the hidden layer.
+        Dimension of the hidden state in LSTM.
     output_dim : int
-        Dimension of the output layer.
+        Dimension of the output (number of classes).
     n_layers : int
         Number of LSTM layers.
     dropout : float
         Dropout rate.
     num_heads : int, optional
-        Number of attention heads (default is 4).
+        Number of attention heads, by default 4.
     num_tokens : int, optional
-        Number of tokens (default is 15).
-    max_seq_length : int, optional
-        Maximum sequence length (default is 100).
+        Number of tokens per transaction, by default 15.
+    max_transactions : int, optional
+        Maximum number of transactions, by default 100.
+
+    Attributes
+    ----------
+    embedding : nn.Embedding
+        Token embedding layer.
+    pos_embedding : nn.Embedding
+        Positional embedding layer.
+    lstm : nn.LSTM
+        LSTM layer.
+    attention : MultiHeadAttention
+        Multi-head attention layer.
+    layer_norm1 : nn.LayerNorm
+        Layer normalization 1.
+    layer_norm2 : nn.LayerNorm
+        Layer normalization 2.
+    feed_forward : nn.Sequential
+        Feed-forward neural network.
+    dropout : nn.Dropout
+        Dropout layer.
+    fc_layer : nn.Sequential
+        Fully connected output layer.
     """
 
     def __init__(
@@ -399,15 +436,15 @@ class EnhancedLSTMClassifier(nn.Module):
         dropout: float,
         num_heads: int = 4,
         num_tokens: int = 15,
-        max_seq_length: int = 100,
+        max_transactions: int = 100,
     ) -> None:
         super().__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.pos_embedding = nn.Embedding(max_seq_length, embedding_dim)
+        self.pos_embedding = nn.Embedding(max_transactions, embedding_dim)
 
         self.lstm = nn.LSTM(
-            embedding_dim * num_tokens + 2,
+            embedding_dim * num_tokens + 7,  # Multiply by num_tokens, +7 for date and amount
             hidden_size=hidden_dim,
             num_layers=n_layers,
             batch_first=True,
@@ -444,63 +481,85 @@ class EnhancedLSTMClassifier(nn.Module):
         label: torch.Tensor | None = None,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
-        Forward pass of the Enhanced LSTM Classifier.
+        Forward pass of the EnhancedLSTMClassifier.
 
         Parameters
         ----------
         dates : torch.Tensor
-            Tensor of dates with shape (batch_size, seq_length).
+            Tensor of shape (batch_size, seq_length, 6) containing date features.
         input_ids : torch.Tensor
-            Tensor of input ids with shape (batch_size, seq_length, num_tokens).
+            Tensor of shape (batch_size, seq_length, num_tokens) containing token IDs.
         amounts : torch.Tensor
-            Tensor of amounts with shape (batch_size, seq_length).
+            Tensor of shape (batch_size, seq_length) containing transaction amounts.
         label : torch.Tensor | None, optional
-            Tensor of labels with shape (batch_size,).
+            Tensor of shape (batch_size,) containing labels, by default None.
 
         Returns
         -------
         torch.Tensor | tuple[torch.Tensor, torch.Tensor]
-            If label is provided:
-                tuple containing (loss, logits)
             If label is None:
-                logits
+                logits: Tensor of shape (batch_size, output_dim) containing class logits.
+            If label is not None:
+                tuple containing:
+                - loss: Scalar tensor with the computed loss.
+                - logits: Tensor of shape (batch_size, output_dim) containing class logits.
         """
-        batch_size, seq_length, num_tokens = input_ids.shape
+        batch_size, seq_length, _ = input_ids.shape
 
+        # Create position tensor
         positions: torch.Tensor = (
             torch.arange(0, seq_length).expand(batch_size, seq_length).to(input_ids.device)
         )
 
-        token_embed: torch.Tensor = self.embedding(input_ids)
-        pos_embed: torch.Tensor = self.pos_embedding(positions).unsqueeze(2)
+        # Get embeddings
+        token_embed: torch.Tensor = self.embedding(
+            input_ids
+        )  # Shape: [batch_size, seq_length, num_tokens, embedding_dim]
+        pos_embed: torch.Tensor = self.pos_embedding(positions).unsqueeze(
+            2
+        )  # Shape: [batch_size, seq_length, 1, embedding_dim]
 
+        # Combine token and positional embeddings
         embedded: torch.Tensor = token_embed + pos_embed
+
+        # Reshape embedded to [batch_size, seq_length, num_tokens * embedding_dim]
         embedded = embedded.view(batch_size, seq_length, -1)
 
-        dates = dates.unsqueeze(-1)
         amounts = amounts.unsqueeze(-1)
 
-        combined: torch.Tensor = torch.cat((embedded, dates, amounts), dim=-1)
+        combined: torch.Tensor = torch.cat(
+            (embedded, dates, amounts), dim=-1
+        )  # Shape: [batch_size, seq_length, num_tokens * embedding_dim + 7]
 
         lstm_output: torch.Tensor
-        lstm_output, _ = self.lstm(combined)
+        lstm_output, _ = self.lstm(combined)  # Shape: [batch_size, seq_length, hidden_dim * 2]
 
         attention_output: torch.Tensor
-        attention_output, _ = self.attention(lstm_output, lstm_output, lstm_output)
-        attention_output = self.dropout(attention_output)
+        attention_output, _ = self.attention(
+            lstm_output, lstm_output, lstm_output
+        )  # Shape: [batch_size, seq_length, hidden_dim * 2]
+        attention_output = self.dropout(
+            attention_output
+        )  # Shape: [batch_size, seq_length, hidden_dim * 2]
 
-        out: torch.Tensor = self.layer_norm1(lstm_output + attention_output)
+        out: torch.Tensor = self.layer_norm1(
+            lstm_output + attention_output
+        )  # Shape: [batch_size, seq_length, hidden_dim * 2]
 
-        ff_output: torch.Tensor = self.feed_forward(out)
-        ff_output = self.dropout(ff_output)
+        ff_output: torch.Tensor = self.feed_forward(
+            out
+        )  # Shape: [batch_size, seq_length, hidden_dim * 2]
+        ff_output = self.dropout(ff_output)  # Shape: [batch_size, seq_length, hidden_dim * 2]
 
-        out = self.layer_norm2(out + ff_output)
+        out = self.layer_norm2(out + ff_output)  # Shape: [batch_size, seq_length, hidden_dim * 2]
 
-        pooled_output: torch.Tensor = torch.max(out, dim=1)[0]
+        pooled_output: torch.Tensor = torch.max(out, dim=1)[
+            0
+        ]  # Shape: [batch_size, hidden_dim * 2]
 
-        logits: torch.Tensor = self.fc_layer(pooled_output)
+        logits: torch.Tensor = self.fc_layer(pooled_output)  # Shape: [batch_size, output_dim]
 
         if label is not None:
             loss: torch.Tensor = F.cross_entropy(logits, label)
-            return (loss, logits)
-        return logits
+            return (loss, logits)  # Shape: (scalar, [batch_size, output_dim])
+        return logits  # Shape: [batch_size, output_dim]

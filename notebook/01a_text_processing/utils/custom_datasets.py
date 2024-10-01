@@ -9,6 +9,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
 
+from utils import cyclical_encode  # type: ignore
+
 
 class StatementDataset(Dataset):
     """
@@ -29,7 +31,7 @@ class StatementDataset(Dataset):
         Returns a dictionary of tensors for a specific index.
     """
 
-    DATE_PAD: int = 0
+    DATE_PAD: int = 2000
     AMOUNT_PAD: float = 0.0
 
     def __init__(
@@ -38,8 +40,9 @@ class StatementDataset(Dataset):
         labels: list[int],
         tokenizer: WordPieceTokenizer | RegexTokenizer,
         scaler: dict[str, MinMaxScaler | StandardScaler],
-        max_length: int = 30,
+        num_tokens: int = 30,
         max_transactions: int = 200,
+        year_month_day: bool = False,
     ) -> None:
         """
         Initialize the StatementDataset.
@@ -54,17 +57,20 @@ class StatementDataset(Dataset):
             Tokenizer to use for encoding descriptions.
         scaler : dict[str, MinMaxScaler | StandardScaler]
             Dictionary of scalers for normalizing dates and amounts.
-        max_length : int, optional
-            Maximum length of encoded descriptions, by default 30.
+        num_tokens : int, optional
+            Maximum number of encoded descriptions, by default 30.
         max_transactions : int, optional
             Maximum number of transactions to consider, by default 200.
+        year_month_day : bool, optional
+            Whether to include year, month, and day in the encoded descriptions, by default False.
         """
         self.data = data
         self.labels = labels
         self.tokenizer = tokenizer
         self.scaler = scaler
-        self.max_length = max_length
+        self.num_tokens = num_tokens
         self.max_transactions = max_transactions
+        self.year_month_day = year_month_day
 
     def __len__(self) -> int:
         """
@@ -91,7 +97,7 @@ class StatementDataset(Dataset):
         dict[str, torch.Tensor]
             A dictionary containing:
             - 'dates': torch.Tensor of shape (max_transactions,)
-            - 'input_ids': torch.Tensor of shape (max_transactions, max_length)
+            - 'input_ids': torch.Tensor of shape (max_transactions, num_tokens)
             - 'amounts': torch.Tensor of shape (max_transactions,)
             - 'label': torch.Tensor of shape (1,)
         """
@@ -100,36 +106,68 @@ class StatementDataset(Dataset):
         transactions: list[str] = self.data[idx][: self.max_transactions]
         label: int = self.labels[idx]
 
-        dates: list[float] = []
+        dates: list[float] | list[tuple[int, int, int]] = []  # type: ignore
+        years: list[float] = []
+        months: list[float] = []
+        days: list[float] = []
         descriptions: list[str] = []
         amounts: list[float] = []
 
         for transaction in transactions:
             date_str, desc, amount_str = transaction.split(delimiter)
             date: datetime = datetime.strptime(date_str.strip(), "%Y-%m-%d")
-            dates.append(date.timestamp())
+            dates.append(date)  # type: ignore
             descriptions.append(desc.strip())
             amounts.append(float(amount_str.strip()))
 
         # Pad if not enough transactions
-        while len(dates) < self.max_transactions:
-            dates.append(self.DATE_PAD)
+        while len(amounts) < self.max_transactions:
+            dates.append(datetime(self.DATE_PAD, 1, 1))  # type: ignore
             descriptions.append("")  # Empty string for padding descriptions
             amounts.append(self.AMOUNT_PAD)
 
         # Tokenize descriptions
-        encoded: list[list[int]] = self.tokenizer.batch_encode(descriptions, self.max_length)
+        encoded: list[list[int]] = self.tokenizer.batch_encode(descriptions, self.num_tokens)
 
         # Scale dates and amounts
         scaled_amounts: np.ndarray = (
             self.scaler["amount_scaler"].transform(np.array(amounts).reshape(-1, 1)).reshape(-1)
         )
-        scaled_dates: np.ndarray = (
-            self.scaler["date_scaler"].transform(np.array(dates).reshape(-1, 1)).reshape(-1)
-        )
+        # Process dates
+        if self.year_month_day:
+            years = np.array([d.year for d in dates])  # type: ignore
+            months = np.array([d.month for d in dates])  # type: ignore
+            days = np.array([d.day for d in dates])  # type: ignore
+            # day_of_week: np.ndarray = np.array([d.weekday() for d in dates])
+            # day_of_year: np.ndarray = np.array([d.timetuple().tm_yday for d in dates])
+
+            # Assuming a 100-year cycle
+            sin_year, cos_year = cyclical_encode(years, 300)
+            sin_month, cos_month = cyclical_encode(months, 12)
+            sin_day, cos_day = cyclical_encode(days, 31)
+            # sin_dow, cos_dow = cyclical_encode(day_of_week, 7)
+            # sin_doy, cos_doy = cyclical_encode(day_of_year, 365)
+
+            date_features = np.column_stack(
+                [
+                    sin_year,
+                    cos_year,
+                    sin_month,
+                    cos_month,
+                    sin_day,
+                    cos_day,
+                    # sin_dow,
+                    # cos_dow,
+                    # sin_doy,
+                    # cos_doy,
+                ]
+            )
+        else:
+            timestamps = np.array([d.timestamp() for d in dates]).reshape(-1, 1)  # type: ignore
+            date_features = self.scaler["date_scaler"].transform(timestamps)
 
         return {
-            "dates": torch.tensor(scaled_dates, dtype=torch.float32),
+            "dates": torch.tensor(date_features, dtype=torch.float32),
             "input_ids": torch.tensor(encoded, dtype=torch.long),
             "amounts": torch.tensor(
                 scaled_amounts,
@@ -221,24 +259,27 @@ class DatasetModule(L.LightningDataModule):
             train_labels,
             self.dataset_config["tokenizer"],
             self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
+            self.dataset_config["num_tokens"],
             self.dataset_config["max_transactions"],
+            self.dataset_config["year_month_day"],
         )
         self.test_dataset: StatementDataset = StatementDataset(
             test_data,
             test_labels,
             self.dataset_config["tokenizer"],
             self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
+            self.dataset_config["num_tokens"],
             self.dataset_config["max_transactions"],
+            self.dataset_config["year_month_day"],
         )
         self.val_dataset: StatementDataset = StatementDataset(
             val_data,
             val_labels,
             self.dataset_config["tokenizer"],
             self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
+            self.dataset_config["num_tokens"],
             self.dataset_config["max_transactions"],
+            self.dataset_config["year_month_day"],
         )
 
     def train_dataloader(self) -> DataLoader:

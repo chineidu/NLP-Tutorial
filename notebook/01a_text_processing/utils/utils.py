@@ -7,6 +7,7 @@ from itertools import chain
 from typing import Any, Callable, Generator, Iterable, Iterator, List, Tuple
 
 import gensim
+import numpy as np
 import spacy
 from gensim.models import Phrases
 from matplotlib import pyplot as plt
@@ -708,3 +709,29 @@ def convert_date_to_unix_timestamp(date_string: str, format: str = "%Y-%m-%d") -
     except ValueError as err:
         console.print(f"Error: {err} | date_string: {date_string}")
         return 0
+
+
+def cyclical_encode(data: np.ndarray, max_val: float) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Perform cyclical encoding on the given data.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Input data to be encoded.
+    max_val : float
+        Maximum value for normalization.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        A tuple containing two arrays:
+        - The sine of the encoded data.
+        - The cosine of the encoded data.
+
+    Notes
+    -----
+    The shape of the output arrays will be the same as the input `data` array.
+    """
+    data = 2 * np.pi * (data / max_val)
+    return np.sin(data), np.cos(data)
