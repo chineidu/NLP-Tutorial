@@ -8,6 +8,7 @@ from typing import Any, Callable, Generator, Iterable, Iterator, List, Tuple
 
 import gensim
 import numpy as np
+import polars as pl
 import spacy
 from gensim.models import Phrases
 from matplotlib import pyplot as plt
@@ -709,6 +710,66 @@ def convert_date_to_unix_timestamp(date_string: str, format: str = "%Y-%m-%d") -
     except ValueError as err:
         console.print(f"Error: {err} | date_string: {date_string}")
         return 0
+
+
+format_1: str = "%Y-%m-%d %H:%M:%S"
+format_2: str = "%Y-%m-%dT%H:%M:%SZ"
+output_format: str = "%Y-%m-%d"
+
+
+def parse_date(date_str: str, input_format: str) -> str | None:
+    try:
+        parsed_date = datetime.strptime(date_str, input_format)
+        return parsed_date.strftime(output_format)
+    except ValueError:
+        return None
+
+
+def process_dataframe(raw_json: dict[str, Any]) -> pl.DataFrame:
+    try:
+        new_df: pl.DataFrame = pl.DataFrame(
+            raw_json["bankStatement"]["content"]["statement"],
+        )
+    except KeyError as e:
+        raise ValueError(f"Invalid JSON structure: {e}")
+
+    try:
+        new_df = (
+            new_df.filter(pl.col("type").eq("credit"))
+            .rename({"narration": "description"})
+            .with_columns(id=pl.lit("1"))
+        )
+    except pl.exceptions.ColumnNotFoundError as e:
+        raise ValueError(f"Required column not found: {e}")
+
+    # format_1
+    new_df = new_df.with_columns(
+        parsed_date=pl.col("date").map_elements(lambda x: parse_date(x, format_1))
+    )
+
+    if new_df["parsed_date"].null_count() == 0:
+        return new_df.drop("date").rename({"parsed_date": "date"}).sort("date", descending=True)
+
+    # format_2
+    new_df = new_df.with_columns(
+        parsed_date=pl.col("date").map_elements(lambda x: parse_date(x, format_2))
+    )
+
+    if new_df["parsed_date"].null_count() == 0:
+        return new_df.drop("date").rename({"parsed_date": "date"}).sort("date", descending=True)
+
+    # else
+    console.print("[WARNING]: Unable to parse dates. Sorting by original date string.")
+    return new_df.drop("parsed_date").sort("date", descending=True)
+
+
+def extract_year_month_day(date_str: str) -> tuple[int, int, int]:
+    """
+    Extract year, month, and day from a date string.
+    """
+    date: list[str] = date_str.split("-")
+    year, month, day = int(date[0]), int(date[1]), int(date[2])
+    return (year, month, day)
 
 
 def cyclical_encode(data: np.ndarray, max_val: float) -> tuple[np.ndarray, np.ndarray]:

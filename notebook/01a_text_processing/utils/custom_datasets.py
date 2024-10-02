@@ -138,15 +138,11 @@ class StatementDataset(Dataset):
             years = np.array([d.year for d in dates])  # type: ignore
             months = np.array([d.month for d in dates])  # type: ignore
             days = np.array([d.day for d in dates])  # type: ignore
-            # day_of_week: np.ndarray = np.array([d.weekday() for d in dates])
-            # day_of_year: np.ndarray = np.array([d.timetuple().tm_yday for d in dates])
 
-            # Assuming a 100-year cycle
+            # Assuming a N-year cycle
             sin_year, cos_year = cyclical_encode(years, 300)
             sin_month, cos_month = cyclical_encode(months, 12)
             sin_day, cos_day = cyclical_encode(days, 31)
-            # sin_dow, cos_dow = cyclical_encode(day_of_week, 7)
-            # sin_doy, cos_doy = cyclical_encode(day_of_year, 365)
 
             date_features = np.column_stack(
                 [
@@ -156,10 +152,6 @@ class StatementDataset(Dataset):
                     cos_month,
                     sin_day,
                     cos_day,
-                    # sin_dow,
-                    # cos_dow,
-                    # sin_doy,
-                    # cos_doy,
                 ]
             )
         else:
