@@ -563,3 +563,178 @@ class EnhancedLSTMClassifier(nn.Module):
             loss: torch.Tensor = F.cross_entropy(logits, label)
             return (loss, logits)  # Shape: (scalar, [batch_size, output_dim])
         return logits  # Shape: [batch_size, output_dim]
+
+
+class ImprovedLSTMClassifier(nn.Module):
+    """
+    Improved LSTM Classifier with separate LSTMs for date, narration, and amount.
+
+    Parameters
+    ----------
+    vocab_size : int
+        Size of the vocabulary.
+    embedding_dim : int
+        Dimension of the embedding vectors.
+    hidden_dim : int
+        Dimension of the hidden state in LSTM layers.
+    output_dim : int
+        Dimension of the output (number of classes).
+    n_layers : int
+        Number of LSTM layers.
+    dropout : float
+        Dropout rate.
+    num_heads : int, optionalImprovedLSTMClassifier
+        Number of attention heads, by default 4.
+    num_tokens : int, optional
+        Number of tokens in each transaction, by default 15.
+    max_transactions : int, optional
+        Maximum number of transactions, by default 100.
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        n_layers: int,
+        dropout: float,
+        num_heads: int = 4,
+        num_tokens: int = 15,
+        max_transactions: int = 100,
+    ) -> None:
+        super().__init__()
+
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.pos_embedding = nn.Embedding(max_transactions, embedding_dim)
+
+        # Separate LSTMs for date, narration, and amount
+        self.date_lstm = nn.LSTM(
+            6,  # 6 features for date
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
+            bidirectional=True,
+        )
+
+        self.narration_lstm = nn.LSTM(
+            embedding_dim * num_tokens,
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
+            bidirectional=True,
+        )
+
+        self.amount_lstm = nn.LSTM(
+            1,  # 1 feature for amount
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
+            bidirectional=True,
+        )
+
+        # Multiply by 6 because of date, narration, and amount LSTM bidirectional outputs.
+        # Each bidirectional output has 2 hidden states, so multiply by 2.
+        self.attention = MultiHeadAttention(hidden_dim * 6, num_heads)
+        self.layer_norm1 = nn.LayerNorm(hidden_dim * 6)
+        self.layer_norm2 = nn.LayerNorm(hidden_dim * 6)
+
+        self.feed_forward = nn.Sequential(
+            nn.Linear(hidden_dim * 6, hidden_dim * 12),
+            nn.ReLU(),
+            nn.Linear(hidden_dim * 12, hidden_dim * 6),
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+        self.fc_layer = nn.Sequential(
+            nn.Linear(hidden_dim * 6, hidden_dim * 3),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim * 3, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+    def forward(
+        self,
+        dates: torch.Tensor,
+        input_ids: torch.Tensor,
+        amounts: torch.Tensor,
+        label: torch.Tensor | None = None,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass of the ImprovedLSTMClassifier.
+
+        Parameters
+        ----------
+        dates : torch.Tensor
+            Tensor of shape (batch_size, seq_length, 6) containing date features.
+        input_ids : torch.Tensor
+            Tensor of shape (batch_size, seq_length, num_tokens) containing token IDs.
+        amounts : torch.Tensor
+            Tensor of shape (batch_size, seq_length) containing transaction amounts.
+        label : torch.Tensor | None, optional
+            Tensor of shape (batch_size,) containing labels, by default None.
+
+        Returns
+        -------
+        torch.Tensor | tuple[torch.Tensor, torch.Tensor]
+            If label is provided, returns a tuple of (loss, logits).
+            Otherwise, returns logits.
+            logits shape: (batch_size, output_dim)
+        """
+        batch_size, seq_length, _ = input_ids.shape
+
+        # Process dates
+        date_output: torch.Tensor
+        date_output, _ = self.date_lstm(dates)  # Shape: (batch_size, seq_length, hidden_dim * 2)
+
+        # Process narration
+        positions: torch.Tensor = (
+            torch.arange(0, seq_length).expand(batch_size, seq_length).to(input_ids.device)
+        )
+        token_embed: torch.Tensor = self.embedding(input_ids)
+        pos_embed: torch.Tensor = self.pos_embedding(positions).unsqueeze(2)
+        embedded: torch.Tensor = token_embed + pos_embed
+        embedded = embedded.view(batch_size, seq_length, -1)
+        narration_output: torch.Tensor
+        narration_output, _ = self.narration_lstm(
+            embedded
+        )  # Shape: (batch_size, seq_length, hidden_dim * 2)
+
+        # Process amounts
+        amount_output: torch.Tensor
+        amount_output, _ = self.amount_lstm(
+            amounts.unsqueeze(-1)
+        )  # Shape: (batch_size, seq_length, hidden_dim * 2)
+
+        # Combine outputs with equal weighting
+        combined_output: torch.Tensor = torch.cat(
+            (date_output, narration_output, amount_output), dim=-1
+        )  # Shape: (batch_size, seq_length, hidden_dim * 6)
+
+        attention_output: torch.Tensor
+        attention_output, _ = self.attention(
+            combined_output, combined_output, combined_output
+        )  # Shape: (batch_size, seq_length, hidden_dim * 6)
+        attention_output = self.dropout(attention_output)
+
+        out: torch.Tensor = self.layer_norm1(combined_output + attention_output)
+
+        ff_output: torch.Tensor = self.feed_forward(out)
+        ff_output = self.dropout(ff_output)
+
+        out = self.layer_norm2(out + ff_output)
+
+        pooled_output: torch.Tensor = torch.max(out, dim=1)[
+            0
+        ]  # Shape: (batch_size, hidden_dim * 6)
+
+        logits: torch.Tensor = self.fc_layer(pooled_output)  # Shape: (batch_size, output_dim)
+
+        if label is not None:
+            loss: torch.Tensor = F.cross_entropy(logits, label)
+            return (loss, logits)
+        return logits
