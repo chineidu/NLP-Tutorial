@@ -1,8 +1,12 @@
+from typing import Any, Dict, List
+
 import torch
 from matplotlib import pyplot as plt
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
+
+from utils.custom_datasets import StatementDataset
 
 
 def calc_accuracy_loader(
@@ -462,3 +466,78 @@ def evaluate_model_multi(
     avg_loss: float = total_loss / len(dataloader.dataset)
 
     return (avg_acc, avg_loss)
+
+
+def predict_customer_type_batch(
+    transactions: List[List[str]],
+    model: nn.Module,
+    model_dependency: Dict[str, Any],
+    max_length: int = 15,
+    max_transactions: int = 100,
+    year_month_day: bool = False,
+    batch_size: int = 32,
+) -> Dict[str, Any]:
+    """
+    Predict customer types for a batch of transactions.
+
+    Parameters
+    ----------
+    transactions : List[List[str]]
+        List of transactions, where each transaction is a list of strings.
+    model : nn.Module
+        The trained neural network model.
+    model_dependency : Dict[str, Any]
+        Dictionary containing model dependencies (tokenizer, scaler, label_encoder).
+    max_length : int, optional
+        Maximum length of each transaction, by default 15.
+    max_transactions : int, optional
+        Maximum number of transactions to consider, by default 100.
+    year_month_day : bool, optional
+        Whether to use year-month-day format for dates, by default False.
+    batch_size : int, optional
+        Batch size for processing, by default 32.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Dictionary containing prediction results:
+        - 'predicted': List[str], predicted customer types
+        - 'probability': List[List[float]], probabilities for each prediction
+        - 'all_labels': List[str], all possible customer type labels
+        - 'all_proba': List[List[float]], probabilities for all labels for
+        each prediction
+    """
+    model.eval()
+
+    dataset: StatementDataset = StatementDataset(
+        transactions,
+        [0] * len(transactions),
+        model_dependency["tokenizer"],
+        model_dependency["scaler"],
+        max_length,
+        max_transactions,
+        year_month_day=year_month_day,
+    )
+    le: Any = model_dependency["label_encoder"]
+    dataloader: DataLoader = DataLoader(dataset, batch_size=batch_size)
+
+    predicted: List[str] = []
+    probas: List[List[float]] = []
+    all_probas: List[List[float]] = []
+
+    with torch.no_grad():
+        for batch in dataloader:
+            logits: torch.Tensor = model(batch["dates"], batch["input_ids"], batch["amounts"])
+            proba: torch.Tensor = torch.softmax(logits, dim=1)
+            pred: torch.Tensor = torch.argmax(logits, dim=1)
+
+            predicted.extend(le.inverse_transform(pred.cpu().numpy()))
+            probas.append(list(proba.max(dim=1).values.cpu().numpy().round(4)))
+            all_probas.extend(proba.cpu().numpy())
+
+    return {
+        "predicted": predicted,
+        "probability": probas,
+        "all_labels": le.classes_,
+        "all_proba": all_probas,
+    }
