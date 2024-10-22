@@ -44,6 +44,11 @@ class DatasetModule(L.LightningDataModule):
         self.test_size: float = test_size
         self.seed: int = seed
 
+        # Initialize datasets as None
+        self.train_dataset: StatementDataset | None = None
+        self.val_dataset: StatementDataset | None = None
+        self.test_dataset: StatementDataset | None = None
+
     def prepare_data(self) -> None:
         """Prepare the dataset by downloading the training and test sets from the internet."""
         pass
@@ -84,71 +89,75 @@ class DatasetModule(L.LightningDataModule):
         Args:
             stage (str): Current stage ('fit', 'validate', 'test', or 'predict').
         """
-        train_data, test_data, val_data, train_labels, test_labels, val_labels = self._get_splits()
-        # Create datasets
-        self.train_dataset: StatementDataset = StatementDataset(
-            train_data,
-            train_labels,
-            self.dataset_config["tokenizer"],
-            self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
-            self.dataset_config["max_transactions"],
-        )
-        self.test_dataset: StatementDataset = StatementDataset(
-            test_data,
-            test_labels,
-            self.dataset_config["tokenizer"],
-            self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
-            self.dataset_config["max_transactions"],
-        )
-        self.val_dataset: StatementDataset = StatementDataset(
-            val_data,
-            val_labels,
-            self.dataset_config["tokenizer"],
-            self.dataset_config["scaler"],
-            self.dataset_config["max_length"],
-            self.dataset_config["max_transactions"],
-        )
+        # Only setup if not already setup
+        if self.train_dataset is None and self.val_dataset is None and self.test_dataset is None:
+            (
+                train_data,
+                test_data,
+                val_data,
+                train_labels,
+                test_labels,
+                val_labels,
+            ) = self._get_splits()
+
+            if stage == "fit" or stage is None:
+                self.train_dataset = StatementDataset(
+                    train_data,
+                    train_labels,
+                    self.dataset_config["tokenizer"],
+                    self.dataset_config["scaler"],
+                    self.dataset_config["num_tokens"],
+                    self.dataset_config["max_transactions"],
+                    self.dataset_config["year_month_day"],
+                )
+                self.val_dataset = StatementDataset(
+                    val_data,
+                    val_labels,
+                    self.dataset_config["tokenizer"],
+                    self.dataset_config["scaler"],
+                    self.dataset_config["num_tokens"],
+                    self.dataset_config["max_transactions"],
+                    self.dataset_config["year_month_day"],
+                )
+
+            if stage == "test" or stage is None:
+                self.test_dataset = StatementDataset(
+                    test_data,
+                    test_labels,
+                    self.dataset_config["tokenizer"],
+                    self.dataset_config["scaler"],
+                    self.dataset_config["num_tokens"],
+                    self.dataset_config["max_transactions"],
+                    self.dataset_config["year_month_day"],
+                )
 
     def train_dataloader(self) -> DataLoader:
-        """
-        Create the training data loader.
-
-        Returns:
-            DataLoader: The training data loader.
-        """
+        if self.train_dataset is None:
+            raise RuntimeError("train_dataset is None. Did you call setup()?")
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
+            drop_last=True,
             num_workers=0,
             generator=torch.Generator().manual_seed(self.seed),
         )
 
     def val_dataloader(self) -> DataLoader:
-        """
-        Create the validation data loader.
-
-        Returns:
-            DataLoader: The validation data loader.
-        """
+        if self.val_dataset is None:
+            raise RuntimeError("val_dataset is None. Did you call setup()?")
         return DataLoader(
-            self.test_dataset,
+            self.val_dataset,
             batch_size=self.batch_size,
             num_workers=0,
             generator=torch.Generator().manual_seed(self.seed),
         )
 
     def test_dataloader(self) -> DataLoader:
-        """
-        Create the test data loader.
-
-        Returns:
-            DataLoader: The test data loader.
-        """
+        if self.test_dataset is None:
+            raise RuntimeError("test_dataset is None. Did you call setup()?")
         return DataLoader(
-            self.val_dataset,
+            self.test_dataset,
             batch_size=self.batch_size,
             num_workers=0,
             generator=torch.Generator().manual_seed(self.seed),
