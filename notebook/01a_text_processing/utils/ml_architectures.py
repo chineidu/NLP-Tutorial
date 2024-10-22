@@ -507,8 +507,11 @@ class EnhancedLSTMClassifier(nn.Module):
         batch_size, seq_length, _ = input_ids.shape
 
         # Create position tensor
+        # Create positions tensor on the same device as input_ids
         positions: torch.Tensor = (
-            torch.arange(0, seq_length).expand(batch_size, seq_length).to(input_ids.device)
+            torch.arange(0, seq_length, device=input_ids.device)
+            .expand(batch_size, seq_length)
+            .to(input_ids.device)
         )
 
         # Get embeddings
@@ -692,8 +695,11 @@ class ImprovedLSTMClassifier(nn.Module):
         date_output, _ = self.date_lstm(dates)  # Shape: (batch_size, seq_length, hidden_dim * 2)
 
         # Process narration
+        # Create positions tensor on the same device as input_ids
         positions: torch.Tensor = (
-            torch.arange(0, seq_length).expand(batch_size, seq_length).to(input_ids.device)
+            torch.arange(0, seq_length, device=input_ids.device)
+            .expand(batch_size, seq_length)
+            .to(input_ids.device)
         )
         token_embed: torch.Tensor = self.embedding(input_ids)
         pos_embed: torch.Tensor = self.pos_embedding(positions).unsqueeze(2)
@@ -736,5 +742,193 @@ class ImprovedLSTMClassifier(nn.Module):
 
         if label is not None:
             loss: torch.Tensor = F.cross_entropy(logits, label)
+            return (loss, logits)
+        return logits
+
+
+class EnhancedLSTMClassifier2(nn.Module):
+    """
+    Enhanced LSTM Classifier with attention mechanism and feature combination.
+
+    Parameters
+    ----------
+    vocab_size : int
+        Size of the vocabulary.
+    embedding_dim : int
+        Dimension of the embedding vectors.
+    hidden_dim : int
+        Dimension of the hidden state in LSTM.
+    output_dim : int
+        Dimension of the output.
+    n_layers : int
+        Number of LSTM layers.
+    dropout : float
+        Dropout rate.
+    num_heads : int, optional
+        Number of attention heads, by default 4.
+    num_tokens : int, optional
+        Number of tokens in each input, by default 15.
+    max_transactions : int, optional
+        Maximum number of transactions, by default 100.
+
+    Attributes
+    ----------
+    embedding : nn.Embedding
+        Token embedding layer.
+    pos_embedding : nn.Embedding
+        Position embedding layer.
+    date_fc : nn.Sequential
+        Fully connected layers for processing dates.
+    amount_fc : nn.Sequential
+        Fully connected layers for processing amounts.
+    lstm : nn.LSTM
+        LSTM layer for processing input_ids.
+    attention : MultiHeadAttention
+        Multi-head attention mechanism.
+    layer_norm1 : nn.LayerNorm
+        Layer normalization after attention.
+    layer_norm2 : nn.LayerNorm
+        Layer normalization after feed-forward.
+    feed_forward : nn.Sequential
+        Feed-forward layers.
+    dropout : nn.Dropout
+        Dropout layer.
+    combine_features : nn.Linear
+        Linear layer for combining features.
+    fc_layer : nn.Sequential
+        Final fully connected layers.
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        n_layers: int,
+        dropout: float,
+        num_heads: int = 4,
+        num_tokens: int = 15,
+        max_transactions: int = 100,
+    ) -> None:
+        super().__init__()
+
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.pos_embedding = nn.Embedding(max_transactions, embedding_dim)
+
+        # Separate processing for date and amount
+        self.date_fc = nn.Sequential(nn.Linear(6, hidden_dim), nn.ReLU(), nn.Dropout(dropout))
+        self.amount_fc = nn.Sequential(nn.Linear(1, hidden_dim), nn.ReLU(), nn.Dropout(dropout))
+
+        # LSTM for processing input_ids
+        self.lstm = nn.LSTM(
+            embedding_dim * num_tokens,
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
+            bidirectional=True,
+        )
+
+        # Attention mechanism
+        self.attention = MultiHeadAttention(hidden_dim * 2, num_heads)
+        self.layer_norm1 = nn.LayerNorm(hidden_dim * 2)
+        self.layer_norm2 = nn.LayerNorm(hidden_dim * 2)
+
+        self.feed_forward = nn.Sequential(
+            nn.Linear(hidden_dim * 2, hidden_dim * 4),
+            nn.ReLU(),
+            nn.Linear(hidden_dim * 4, hidden_dim * 2),
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+        # Combine all features
+        self.combine_features = nn.Linear(hidden_dim * 4, hidden_dim * 2)
+
+        self.fc_layer = nn.Sequential(
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, output_dim),
+        )
+
+    def forward(
+        self,
+        dates: torch.Tensor,
+        input_ids: torch.Tensor,
+        amounts: torch.Tensor,
+        label: torch.Tensor | None = None,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass of the EnhancedLSTMClassifier2.
+
+        Parameters
+        ----------
+        dates : torch.Tensor
+            Tensor of shape (batch_size, seq_length, 6) containing date features.
+        input_ids : torch.Tensor
+            Tensor of shape (batch_size, seq_length, num_tokens) containing input token ids.
+        amounts : torch.Tensor
+            Tensor of shape (batch_size, seq_length) containing transaction amounts.
+        label : torch.Tensor | None, optional
+            Tensor of shape (batch_size,) containing labels, by default None.
+
+        Returns
+        -------
+        torch.Tensor | tuple[torch.Tensor, torch.Tensor]
+            If label is provided, returns a tuple of (loss, logits).
+            Otherwise, returns logits.
+            logits shape: (batch_size, output_dim)
+        """
+        batch_size, seq_length, _ = input_ids.shape
+
+        # Process dates and amounts
+        date_features: torch.Tensor = self.date_fc(
+            dates
+        )  # Shape: [batch_size, seq_length, hidden_dim]
+        amount_features: torch.Tensor = self.amount_fc(
+            amounts.unsqueeze(-1)
+        )  # Shape: [batch_size, seq_length, hidden_dim]
+
+        # Process input_ids
+        # Create positions tensor on the same device as input_ids
+        positions: torch.Tensor = torch.arange(0, seq_length, device=input_ids.device).expand(
+            batch_size, seq_length
+        )
+        token_embed: torch.Tensor = self.embedding(
+            input_ids
+        )  # Shape: [batch_size, seq_length, num_tokens, embedding_dim]
+        pos_embed: torch.Tensor = self.pos_embedding(positions).unsqueeze(
+            2
+        )  # Shape: [batch_size, seq_length, 1, embedding_dim]
+        embedded: torch.Tensor = token_embed + pos_embed
+        embedded = embedded.view(batch_size, seq_length, -1)
+
+        lstm_output: torch.Tensor
+        lstm_output, _ = self.lstm(embedded)  # Shape: [batch_size, seq_length, hidden_dim * 2]
+
+        attention_output: torch.Tensor
+        attention_output, _ = self.attention(lstm_output, lstm_output, lstm_output)
+        attention_output = self.dropout(attention_output)
+        out: torch.Tensor = self.layer_norm1(lstm_output + attention_output)
+
+        ff_output: torch.Tensor = self.feed_forward(out)
+        ff_output = self.dropout(ff_output)
+        out = self.layer_norm2(out + ff_output)
+
+        # Combine all features
+        combined_features: torch.Tensor = torch.cat([out, date_features, amount_features], dim=-1)
+        combined_features = self.combine_features(combined_features)
+
+        pooled_output: torch.Tensor = torch.max(combined_features, dim=1)[0]
+
+        logits: torch.Tensor = self.fc_layer(pooled_output)
+
+        if label is not None:
+            # Multi-label classification
+            loss: torch.Tensor = F.binary_cross_entropy_with_logits(logits, label)
             return (loss, logits)
         return logits
