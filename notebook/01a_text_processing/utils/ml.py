@@ -1,4 +1,5 @@
 # ruff: noqa: T201
+import time
 from typing import Any, Literal
 
 import matplotlib.pyplot as plt
@@ -16,7 +17,7 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve,
 )
-from sklearn.model_selection import learning_curve
+from sklearn.model_selection import StratifiedKFold, learning_curve
 from spacy.tokens import Doc, Token
 
 nlp = spacy.load("en_core_web_sm")
@@ -24,11 +25,6 @@ nlp = spacy.load("en_core_web_sm")
 
 def calculate_class_weights(n_samples: int, total_samples: int, n_classes: int) -> float:
     return np.round(total_samples / (n_samples * n_classes), 4)
-
-
-import time
-
-from sklearn.model_selection import StratifiedKFold
 
 
 def train_model_with_cross_validation(
