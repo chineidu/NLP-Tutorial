@@ -1,3 +1,4 @@
+# ruff: noqa: T201
 from typing import Any, Literal
 
 import matplotlib.pyplot as plt
@@ -6,9 +7,12 @@ import seaborn as sns
 import spacy
 from matplotlib import pyplot as plt
 from sklearn.metrics import (
+    ConfusionMatrixDisplay,
     auc,
     average_precision_score,
+    classification_report,
     confusion_matrix,
+    multilabel_confusion_matrix,
     precision_recall_curve,
     roc_curve,
 )
@@ -381,6 +385,155 @@ def plot_learning_curve(
     plt.ylim([0.5, 1.03])
     plt.tight_layout()
     plt.show()
+
+
+def plot_confusion_matrix_multiclass(y_preds, y_true, labels, title: str | None = None) -> None:
+    if title is None:
+        title = "Normalized confusion matrix".title()
+    else:
+        title = title.title()
+
+    cm = confusion_matrix(y_true, y_preds, normalize="true")
+    _, ax = plt.subplots(figsize=(8, 8))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+    disp.plot(cmap="Blues", values_format=".2f", ax=ax, colorbar=False)
+    plt.xticks(rotation=90)
+    plt.yticks(rotation=0)
+    plt.title(title, size=18)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_multilabel_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    label_names: list[str],
+    normalize: bool = False,
+) -> None:
+    """
+    Plot multilabel confusion matrices for each label.
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True labels, shape (n_samples, n_labels)
+    y_pred : np.ndarray
+        Predicted labels, shape (n_samples, n_labels)
+    label_names : list[str]
+        Names of the labels
+
+    Returns
+    -------
+    None
+    """
+    # Compute multi-label confusion matrix
+    multi_conf_mat: np.ndarray = multilabel_confusion_matrix(y_true, y_pred)
+    _, axes = plt.subplots(nrows=len(label_names), ncols=1, figsize=(6, 12))
+
+    for i, (ax, name) in enumerate(zip(axes, label_names)):
+        cm: np.ndarray = multi_conf_mat[i]
+        if normalize:
+            cm = (cm / cm.sum(1)).round(2)
+        sns.heatmap(cm, annot=True, fmt=".2f", ax=ax, cmap="Blues")
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        ax.set_title(f"Confusion Matrix: {name}", size=15)
+        ax.xaxis.set_ticklabels(["Negative", "Positive"])
+        ax.yaxis.set_ticklabels(["Negative", "Positive"])
+
+    plt.tight_layout()
+    plt.show()
+
+
+def print_metrics(multi_conf_mat: np.ndarray, label_names: list[str]) -> None:
+    """
+    Print performance metrics for each label in a multi-label classification.
+
+    Parameters
+    ----------
+    multi_conf_mat : np.ndarray
+        Multi-label confusion matrix of shape (n_labels, 2, 2).
+    label_names : list[str]
+        List of label names.
+
+    Returns
+    -------
+    None
+        This function prints the metrics and does not return any value.
+    """
+    for i, name in enumerate(label_names):
+        tn, fp, fn, tp = multi_conf_mat[i].ravel()
+        accuracy: float = (tp + tn) / (tp + tn + fp + fn)
+        precision: float = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall: float = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1: float = (
+            2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        )
+
+        print(f"\nMetrics for {name}:")
+        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1-score: {f1:.4f}")
+    return None
+
+
+def generate_confusion_matrix_report(
+    y_preds: np.ndarray, y_true: np.ndarray, labels: list[str]
+) -> dict[str, dict[str, float]]:
+    """
+    Generate and print a detailed classification report including per-class accuracies
+    and overall metrics.
+
+    Parameters
+    ----------
+    y_preds : np.ndarray
+        Predicted labels of shape (n_samples,).
+    y_true : np.ndarray
+        Ground truth labels of shape (n_samples,).
+    labels : list[str]
+        List of label names.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        A dictionary containing the classification report with precision, recall,
+        f1-score, and support metrics for each class and averages.
+    """
+    # Generate the classification report
+    report = classification_report(y_true, y_preds, target_names=labels, output_dict=True)
+
+    # Calculate accuracy for each class
+    cm = confusion_matrix(y_true, y_preds)
+    class_accuracies: dict[str, float] = {}
+    for i, label in enumerate(labels):
+        true_positives = cm[i, i]
+        total_instances = np.sum(cm[i, :])
+        accuracy = true_positives / total_instances if total_instances > 0 else 0
+        class_accuracies[label] = accuracy
+
+    # Print the classification report with accuracies
+    print("Classification Report:\n")
+    for label in labels:
+        print(f"{label}:")
+        print("-" * (len(label) + 1))
+        print(f"  Precision: {report[label]['precision']:.2f}")
+        print(f"  Recall: {report[label]['recall']:.2f}")
+        print(f"  F1-Score: {report[label]['f1-score']:.2f}")
+        print(f"  Samples: {report[label]['support']:,}")
+        print(f"  Accuracy: {class_accuracies[label]:.2f}")
+        print()
+
+    print("Overall:")
+    print("-" * 9)
+    print(f"Accuracy: {report['accuracy']:.2f}")
+    print(f"Macro Avg Precision: {report['macro avg']['precision']:.2f}")
+    print(f"Macro Avg Recall: {report['macro avg']['recall']:.2f}")
+    print(f"Macro Avg F1-Score: {report['macro avg']['f1-score']:.2f}")
+    print(f"Weighted Avg Precision: {report['weighted avg']['precision']:.2f}")
+    print(f"Weighted Avg Recall: {report['weighted avg']['recall']:.2f}")
+    print(f"Weighted Avg F1-Score: {report['weighted avg']['f1-score']:.2f}")
+    return report
 
 
 # ==== SpaCy Helper Functions ====
