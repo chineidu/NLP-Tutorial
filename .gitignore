@@ -141,7 +141,7 @@ notebook/06_Transformers/bert-finetuned-sequence-classification
 qdrant_storage
 temp
 data_prep
-**/*spend*.ipynb
+# **/*spend*.ipynb
 **/data
 **/.vscode
 **/mlruns
