@@ -796,3 +796,72 @@ def cyclical_encode(data: np.ndarray, max_val: float) -> tuple[np.ndarray, np.nd
     """
     data = 2 * np.pi * (data / max_val)
     return np.sin(data), np.cos(data)
+
+
+def convert_to_unique_labels(text: list[str]) -> str:
+    text = ", ".join(text)  # type: ignore
+    text = sorted(set(text.split(", ")))  # type: ignore
+    text = ", ".join(text)  # type: ignore
+    return text  # type: ignore
+
+
+def create_id_text_mapping(data: pl.DataFrame, with_labels: bool = True) -> pl.DataFrame:
+    """
+    Create a mapping of IDs to text and labels from the input DataFrame.
+
+    Parameters
+    ----------
+    data : pl.DataFrame
+        Input DataFrame containing columns: analysis_id, date, description, amount, label.
+    with_labels : bool, optional
+        If True, include the labels in the mapping. If False, only include the
+        unique text in the mapping. The default is True.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame with columns: id, statement, label.
+
+    Notes
+    -----
+    The resulting DataFrame will have one row per unique ID, with concatenated text
+    and sorted, unique labels.
+    """
+
+    if not with_labels:
+        columns: list[str] = ["id", "date", "description", "amount"]
+        df: pl.DataFrame = data.select(columns).sort("date", descending=True)
+        df_grpby: pl.DataFrame = df.group_by("id").agg(
+            text=pl.concat_str(
+                pl.col("date"),
+                pl.col("description"),
+                pl.col("amount"),
+                separator=" || ",
+            )
+        )
+
+    else:
+        columns: list[str] = ["id", "date", "description", "amount", "label"]  # type: ignore
+        df = data.select(columns).sort("date", descending=True)
+        df_grpby = (
+            df.group_by("id")
+            .agg(
+                text=pl.concat_str(
+                    pl.col("date"),
+                    pl.col("description"),
+                    pl.col("amount"),
+                    separator=" || ",
+                ),
+                label=pl.col("label").list.join(", ").unique().sort(),
+            )
+            .with_columns(
+                tag=pl.col("label").map_elements(convert_to_unique_labels),
+            )
+            .with_columns(
+                tag=pl.when(pl.col("tag").str.contains("No-Income"))
+                .then(pl.lit("No-Income"))
+                .otherwise(pl.col("tag"))
+            )
+        )
+
+    return df_grpby

@@ -4,8 +4,10 @@ from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 import seaborn as sns
 import spacy
+import torch
 from matplotlib import pyplot as plt
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -19,6 +21,11 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold, learning_curve
 from spacy.tokens import Doc, Token
+from torch import nn
+from torch.utils.data import DataLoader
+
+from utils.custom_datasets import StatementDatasetWithLabels
+from utils.utils import create_id_text_mapping
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -530,6 +537,211 @@ def generate_confusion_matrix_report(
     print(f"Weighted Avg Recall: {report['weighted avg']['recall']:.2f}")
     print(f"Weighted Avg F1-Score: {report['weighted avg']['f1-score']:.2f}")
     return report
+
+
+def calculate_metrics(data: pl.DataFrame, label_name: str, y_pred_column: str) -> dict[str, float]:
+    """Calculate classification metrics for a specific label in multi-class classification.
+
+    Parameters
+    ----------
+    data : pl.DataFrame, shape (n_samples, n_features)
+        Input DataFrame containing 'tag' and 'y_pred_column' columns
+        for multi-class classification.
+    label_name : str
+        Name of the class for which metrics are calculated.
+    y_pred_column : str
+        Name of the column containing predicted labels.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary containing accuracy, precision, recall, and F1-score metrics.
+        Keys: 'accuracy', 'precision', 'recall', 'f1'
+        Values: Corresponding metric values as floats
+    """
+    # True Positives
+    tp: int = data.filter(
+        (pl.col("true_label").eq(label_name)) & (pl.col(y_pred_column).eq(label_name))
+    ).shape[0]
+
+    # False Positives
+    fp: int = data.filter(
+        (pl.col("true_label").ne(label_name)) & (pl.col(y_pred_column).eq(label_name))
+    ).shape[0]
+
+    # False Negatives
+    fn: int = data.filter(
+        (pl.col("true_label").eq(label_name)) & (pl.col(y_pred_column).ne(label_name))
+    ).shape[0]
+
+    # True Negatives
+    tn: int = data.shape[0] - tp - fp - fn  # Remaining elements are TN
+
+    precision: float = tp / (tp + fp) if (tp + fp) > 0 else float("nan")
+    recall: float = tp / (tp + fn) if (tp + fn) > 0 else float("nan")
+    f1: float = (
+        (2 * precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else float("nan")
+    )
+    accuracy: float = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else float("nan")
+
+    print(f"\nMetrics for {label_name}:\n")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1-score: {f1:.4f}")
+
+    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
+
+
+def predict_customer_type_multilabel(  # type: ignore
+    transactions: list[str],
+    model: nn.Module,
+    model_dependency: dict[str, Any],
+    max_length: int = 15,
+    max_transactions: int = 100,
+    year_month_day: bool = False,
+) -> dict[str, Any]:
+    model.eval()
+    torch.manual_seed(0)
+
+    dataset = StatementDatasetWithLabels(
+        [transactions],
+        [0],  # type: ignore
+        model_dependency["tokenizer"],
+        model_dependency["scaler"],
+        max_length,
+        max_transactions,
+        year_month_day=year_month_day,
+    )
+    dataloader = DataLoader(dataset, batch_size=1)
+
+    with torch.no_grad():
+        for batch in dataloader:
+            dates = batch["dates"]
+            input_ids = batch["input_ids"]
+            amounts = batch["amounts"]
+
+            logits: torch.Tensor = model(dates, input_ids, amounts)
+            proba: torch.Tensor = torch.sigmoid(logits) * 100
+            predicted: torch.Tensor = (proba > 50).float()
+            result: dict[str, Any] = {
+                "predicted": predicted.cpu().numpy().flatten().tolist(),
+                "probability": list(proba.cpu().numpy().flatten().round(2)),
+                "all_labels": ["Formal-Income", "Informal-Income"],
+            }
+
+            return result
+
+
+def get_predicted_income_type(
+    data: pl.DataFrame,
+    model: nn.Module,
+    model_dependency: dict[str, Any],
+    amount_threshold: float = 6000.0,
+    max_length: int = 20,
+    max_transactions: int = 350,
+) -> dict[str, Any]:
+    """
+    Predict income type based on transaction data.
+
+    Parameters
+    ----------
+    data : pl.DataFrame
+        Input DataFrame containing transactions.
+    model : nn.Module
+        PyTorch neural network model for prediction
+    model_dependency : dict[str, Any]
+        Dictionary containing model dependencies (tokenizer, scaler)
+    amount_threshold : float, optional
+        Minimum amount threshold for filtering transactions, by default 6000.0
+    max_length : int, optional
+        Maximum length of text sequences, by default 20
+    max_transactions : int, optional
+        Maximum number of transactions to consider, by default 350
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing:
+        - 'predicted': list[int], shape (2,), predicted income types
+        - 'probability': list[float], shape (2,), prediction probabilities
+        - 'all_labels': list[str], shape (2,), income type labels
+    """
+    all_labels: list[str] = ["Formal-Income", "Informal-Income"]
+    salary_pattern: str = r"(?i)\bsalary\b|salary\b|salary|\bsalaries\b|salaries\b|salaries|\bsal\b"
+    base_result: dict[str, list[Any]] = {
+        "predicted": [0.0, 0.0],
+        "probability": [1.05, 2.05],
+        "all_labels": all_labels,
+    }
+    base_inf_result: dict[str, list[Any]] = {
+        "predicted": [0.0, 1.0],
+        "probability": [10.01, 50.01],
+        "all_labels": all_labels,
+    }
+    base_salary_result: dict[str, list[Any]] = {
+        "predicted": [1.0, 0.0],
+        "probability": [70.01, 25.01],
+        "all_labels": all_labels,
+    }
+    base_salary_result_2: dict[str, list[Any]] = {
+        "predicted": [1.0, 1.0],
+        "probability": [75.01, 80.01],
+        "all_labels": all_labels,
+    }
+    base_salary_result_3: dict[str, list[Any]] = {
+        "predicted": [1.0, 1.0],
+        "probability": [52.01, 90.01],
+        "all_labels": all_labels,
+    }
+
+    data_size: int = data.shape[0]
+
+    if "type" in data.columns:
+        data = data.filter(
+            (
+                (pl.col("type").str.to_lowercase().eq("credit"))
+                | (pl.col("type").str.to_lowercase().eq("c"))
+            )
+        )
+        # Update the size
+        data_size = data.shape[0]
+    data = data.filter(pl.col("amount").ge(amount_threshold)).sort("date", descending=True)
+    salary_condition_1: bool = data["description"].str.contains(salary_pattern).all()
+    salary_trns: int = data["description"].str.contains(salary_pattern).sum()
+
+    trn_pct: float = round((data.shape[0] / data_size), 2)
+
+    if len(data) <= 1:
+        predicted_type: dict[str, Any] = base_result
+        return predicted_type
+    if len(data) == 2 and salary_condition_1:
+        predicted_type = base_salary_result
+        return predicted_type
+    if len(data) == 2 or trn_pct < 0.05:
+        predicted_type = base_inf_result
+        return predicted_type
+    if len(data) > 2 and (salary_trns / data_size >= 0.02):
+        predicted_type = base_salary_result_2
+        return predicted_type
+    if len(data) > 2 and (salary_trns / data_size > 0.003):
+        predicted_type = base_salary_result_3
+        return predicted_type
+
+    df: pl.DataFrame = create_id_text_mapping(data=data, with_labels=False)
+    transactions: list[dict[str, Any]] = df["text"].to_list()[0]
+
+    predicted_type = predict_customer_type_multilabel(  # type: ignore
+        transactions,  # type: ignore
+        model=model,
+        model_dependency=model_dependency,
+        max_length=max_length,
+        max_transactions=max_transactions,
+        year_month_day=True,
+    )
+    return predicted_type
 
 
 # ==== SpaCy Helper Functions ====

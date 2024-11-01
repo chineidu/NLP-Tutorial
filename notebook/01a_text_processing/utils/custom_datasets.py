@@ -169,6 +169,165 @@ class StatementDataset(Dataset):
         }
 
 
+class StatementDatasetWithLabels(Dataset):
+    """
+    A custom Dataset for handling financial statement data.
+
+    Attributes
+    ----------ß
+    DATE_PAD : int
+        Padding value for dates.
+    AMOUNT_PAD : float
+        Padding value for amounts.
+    TEXT_PAD : str
+        Padding value for text.
+
+    Methods
+    -------
+    __len__() -> int
+        Returns the number of items in the dataset.
+    __getitem__(idx: int) -> dict[str, torch.Tensor]
+        Returns a dictionary of tensors for a specific index.
+    get_clusters(data: list[str]) -> np.ndarray
+        Returns clusters for the given data.
+    """
+
+    DATE_PAD: int = 2000
+    AMOUNT_PAD: float = 0.0
+    TEXT_PAD: str = "[PAD]"
+
+    def __init__(
+        self,
+        data: list[list[str]],
+        labels: list[tuple[int]],
+        tokenizer: WordPieceTokenizer | RegexTokenizer,
+        scaler: dict[str, MinMaxScaler | StandardScaler],
+        num_tokens: int = 30,
+        max_transactions: int = 200,
+        year_month_day: bool = False,
+    ) -> None:
+        """
+        Initialize the StatementDataset.
+
+        Parameters
+        ----------
+        data : list[list[str]]
+            List of transactions, where each transaction is a list of strings.
+        labels : list[tuple[int]]
+            List of labels for each transaction.
+        tokenizer : WordPieceTokenizer | RegexTokenizer
+            Tokenizer to use for encoding descriptions.
+        scaler : dict[str, MinMaxScaler | StandardScaler]
+            Dictionary of scalers for normalizing dates and amounts.
+        num_tokens : int, optional
+            Maximum number of encoded descriptions, by default 30.
+        max_transactions : int, optional
+            Maximum number of transactions to consider, by default 200.
+        year_month_day : bool, optional
+            Whether to include year, month, and day in the encoded descriptions, by default False.
+        """
+        self.data = data
+        self.labels = labels
+        self.tokenizer = tokenizer
+        self.scaler = scaler
+        self.num_tokens = num_tokens
+        self.max_transactions = max_transactions
+        self.year_month_day = year_month_day
+
+    def __len__(self) -> int:
+        """
+        Get the number of items in the dataset.
+
+        Returns
+        -------
+        int
+            The number of items in the dataset.
+        """
+        return len(self.data)
+
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+        """
+        Get a single item from the dataset.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the item to retrieve.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            A dictionary containing:
+            - 'dates': torch.Tensor of shape (max_transactions, date_features)
+            - 'input_ids': torch.Tensor of shape (max_transactions, num_tokens)
+            - 'amounts': torch.Tensor of shape (max_transactions,)
+            - 'label': torch.Tensor of shape (1,)
+        """
+        delimiter: str = " || "
+        # Truncate if too many
+        transactions: list[str] = self.data[idx][: self.max_transactions]
+        label: tuple[int] = self.labels[idx]
+
+        dates: list[datetime] = []
+        descriptions: list[str] = []
+        amounts: list[float] = []
+
+        for transaction in transactions:
+            date_str, desc, amount_str = transaction.split(delimiter)
+            date: datetime = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            dates.append(date)
+            descriptions.append(desc.strip())
+            amounts.append(float(amount_str.strip()))
+
+        # Pad if not enough transactions
+        while len(amounts) < self.max_transactions:
+            dates.append(datetime(self.DATE_PAD, 1, 1))
+            descriptions.append(self.TEXT_PAD)
+            amounts.append(self.AMOUNT_PAD)
+
+        # Tokenize descriptions
+        encoded: list[list[int]] = self.tokenizer.batch_encode(descriptions, self.num_tokens)
+
+        # Scale dates and amounts
+        scaled_amounts: np.ndarray = (
+            self.scaler["amount_scaler"].transform(np.array(amounts).reshape(-1, 1)).reshape(-1)
+        )
+        # Process dates
+        if self.year_month_day:
+            years: np.ndarray = np.array([d.year for d in dates])
+            months: np.ndarray = np.array([d.month for d in dates])
+            days: np.ndarray = np.array([d.day for d in dates])
+
+            # Assuming a 200-year cycle
+            sin_year, cos_year = cyclical_encode(years, 200)
+            sin_month, cos_month = cyclical_encode(months, 12)
+            sin_day, cos_day = cyclical_encode(days, 31)
+
+            date_features: np.ndarray = np.column_stack(
+                [
+                    sin_year,
+                    cos_year,
+                    sin_month,
+                    cos_month,
+                    sin_day,
+                    cos_day,
+                ]
+            )
+        else:
+            timestamps: np.ndarray = np.array([d.timestamp() for d in dates]).reshape(-1, 1)
+            date_features = self.scaler["date_scaler"].transform(timestamps)
+
+        return {
+            "dates": torch.tensor(date_features, dtype=torch.float32),
+            "input_ids": torch.tensor(encoded, dtype=torch.long),
+            "amounts": torch.tensor(
+                scaled_amounts,
+                dtype=torch.float32,
+            ),
+            "label": torch.tensor(label, dtype=torch.float32),
+        }
+
+
 class DatasetModule(L.LightningDataModule):
     """
     A LightningDataModule for handling dataset operations.
